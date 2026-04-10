@@ -24,7 +24,9 @@
         .status-esgotado { background: #fee2e2; color: #991b1b; }
 
         .badge-pendente { background: #fef9c3; color: #854d0e; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; }
-        #modal-edicao { background: rgba(0,0,0,0.5); backdrop-filter: blur(2px); }
+        
+        /* Modal Config */
+        .modal-overlay { background: rgba(0,0,0,0.5); backdrop-filter: blur(2px); z-index: 100; }
         
         tr { transition: background 0.2s; }
         .search-input:focus { border-color: #c5a059; box-shadow: 0 0 0 2px rgba(197, 160, 89, 0.2); }
@@ -44,6 +46,18 @@
 <body class="flex min-h-screen">
 
     <div id="toast-container"></div>
+
+    <div id="modal-confirmacao" class="hidden fixed inset-0 modal-overlay flex items-center justify-center p-4 z-[100]">
+        <div class="bg-white max-w-sm w-full p-8 rounded shadow-2xl text-center">
+            <div class="text-red-500 text-4xl mb-4">⚠️</div>
+            <h3 id="confirma-titulo" class="font-cinzel text-lg mb-2 uppercase">Remover do Axé?</h3>
+            <p id="confirma-texto" class="text-stone-500 text-sm mb-6">Esta ação não pode ser desfeita.</p>
+            <div class="flex gap-3">
+                <button onclick="fecharConfirmacao()" class="flex-1 py-3 bg-stone-100 text-[10px] font-bold uppercase rounded hover:bg-stone-200 transition">Cancelar</button>
+                <button id="btn-confirmar-acao" class="flex-1 py-3 bg-red-600 text-white text-[10px] font-bold uppercase hover:bg-red-700 rounded shadow-md transition">Confirmar</button>
+            </div>
+        </div>
+    </div>
 
     <aside class="w-64 sidebar text-white flex flex-col fixed h-full z-40">
         <div class="p-8 border-b border-stone-700">
@@ -77,15 +91,15 @@
     <main class="ml-64 flex-1 p-10">
         
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-            <div class="bg-white p-6 rounded-lg border border-stone-100 shadow-sm">
+            <div class="bg-white p-6 rounded-lg border border-stone-100 shadow-sm text-center md:text-left">
                 <p class="text-[10px] uppercase text-stone-400 font-bold mb-1">Total de Itens</p>
                 <span id="stat-total-itens" class="text-3xl font-bold font-cinzel">0</span>
             </div>
-            <div class="bg-white p-6 rounded-lg border border-stone-100 shadow-sm">
+            <div class="bg-white p-6 rounded-lg border border-stone-100 shadow-sm text-center md:text-left">
                 <p class="text-[10px] uppercase text-stone-400 font-bold mb-1">Faturamento (Vendas)</p>
                 <span id="stat-faturamento" class="text-3xl font-bold font-cinzel text-emerald-700">R$ 0,00</span>
             </div>
-            <div class="bg-white p-6 rounded-lg border border-stone-100 shadow-sm">
+            <div class="bg-white p-6 rounded-lg border border-stone-100 shadow-sm text-center md:text-left">
                 <p class="text-[10px] uppercase text-stone-400 font-bold mb-1">Itens Esgotados</p>
                 <span id="stat-esgotados" class="text-3xl font-bold font-cinzel text-red-600">0</span>
             </div>
@@ -166,7 +180,7 @@
                 <input type="text" id="busca-produto" onkeyup="filtrarProdutos()" placeholder="Pesquisar produto..." class="search-input p-3 border border-stone-200 rounded-lg text-sm w-64 outline-none transition">
             </div>
 
-            <div class="bg-white shadow-xl border border-stone-100 overflow-hidden rounded-lg">
+            <div class="bg-white shadow-xl border border-stone-100 overflow-hidden rounded-lg overflow-x-auto">
                 <table class="w-full text-left">
                     <thead>
                         <tr class="bg-stone-800 text-white text-[10px] uppercase tracking-widest">
@@ -189,10 +203,10 @@
                     <h2 class="text-3xl font-bold uppercase tracking-tight font-cinzel">Registro de Vendas</h2>
                     <p class="text-stone-500 text-sm">Histórico de pedidos via WhatsApp.</p>
                 </div>
-                <button onclick="limparVendas()" class="text-[10px] bg-red-50 text-red-500 border border-red-100 px-4 py-2 rounded font-bold uppercase hover:bg-red-500 hover:text-white transition">Limpar Histórico</button>
+                <button onclick="abrirConfirmacao('vendas')" class="text-[10px] bg-red-50 text-red-500 border border-red-100 px-4 py-2 rounded font-bold uppercase hover:bg-red-500 hover:text-white transition">Limpar Histórico</button>
             </header>
 
-            <div class="bg-white shadow-xl border border-stone-100 overflow-hidden rounded-lg">
+            <div class="bg-white shadow-xl border border-stone-100 overflow-hidden rounded-lg overflow-x-auto">
                 <table class="w-full text-left text-sm">
                     <thead>
                         <tr class="bg-stone-50 border-b border-stone-100 text-[10px] uppercase font-bold text-stone-400 tracking-widest">
@@ -209,7 +223,7 @@
         </section>
     </main>
 
-    <div id="modal-edicao" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div id="modal-edicao" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 modal-overlay">
         <div class="bg-white max-w-md w-full p-8 rounded shadow-2xl">
             <h3 class="font-cinzel text-xl mb-6 uppercase border-b pb-4 text-[#c5a059]">Editar Registro</h3>
             <form id="form-edicao" class="space-y-4">
@@ -265,32 +279,66 @@
         const fbDb = getFirestore(app);
         let db = [];
         let vendas = JSON.parse(localStorage.getItem('minhas_vendas')) || [];
+        let acaoPendente = null;
 
-        // --- FUNÇÃO DE NOTIFICAÇÃO PERSONALIZADA (TOAST) ---
+        // --- SISTEMA DE NOTIFICAÇÃO (TOAST) ---
         function showToast(message, type = 'success') {
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
             toast.className = `toast`;
             if(type === 'error') toast.style.borderLeftColor = '#991b1b';
-            
-            toast.innerHTML = `
-                <span>${type === 'success' ? '✨' : '⚠️'}</span>
-                <span>${message}</span>
-            `;
-            
+            toast.innerHTML = `<span>${type === 'success' ? '✨' : '⚠️'}</span><span>${message}</span>`;
             container.appendChild(toast);
-            
-            // Trigger animation
             setTimeout(() => toast.classList.add('show'), 100);
-            
-            // Remove toast
             setTimeout(() => {
                 toast.classList.remove('show');
                 setTimeout(() => toast.remove(), 300);
             }, 3000);
         }
 
-        // Sincronização
+        // --- SISTEMA DE CONFIRMAÇÃO PERSONALIZADO ---
+        window.abrirConfirmacao = function(idOuTipo) {
+            acaoPendente = idOuTipo;
+            const modal = document.getElementById('modal-confirmacao');
+            const titulo = document.getElementById('confirma-titulo');
+            const texto = document.getElementById('confirma-texto');
+
+            if(idOuTipo === 'vendas') {
+                titulo.innerText = "Limpar Histórico?";
+                texto.innerText = "Isso apagará permanentemente todos os registros de vendas.";
+            } else {
+                titulo.innerText = "Remover do Axé?";
+                texto.innerText = "Este item será retirado do catálogo e não poderá ser recuperado.";
+            }
+            modal.classList.remove('hidden');
+        };
+
+        window.fecharConfirmacao = function() {
+            acaoPendente = null;
+            document.getElementById('modal-confirmacao').classList.add('hidden');
+        };
+
+        document.getElementById('btn-confirmar-acao').onclick = async function() {
+            if(!acaoPendente) return;
+
+            if(acaoPendente === 'vendas') {
+                vendas = [];
+                localStorage.setItem('minhas_vendas', JSON.stringify(vendas));
+                renderizarVendas();
+                updateStats();
+                showToast("Histórico de vendas limpo.", "error");
+            } else {
+                try {
+                    await deleteDoc(doc(fbDb, "produtos", acaoPendente));
+                    showToast("Item removido do estoque.", "error");
+                } catch (e) {
+                    showToast("Erro ao remover item.", "error");
+                }
+            }
+            fecharConfirmacao();
+        };
+
+        // --- FIREBASE SYNC ---
         onSnapshot(collection(fbDb, "produtos"), (snapshot) => {
             db = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             renderizarLista();
@@ -301,21 +349,16 @@
         document.getElementById('form-cadastro').onsubmit = async function(e) {
             e.preventDefault();
             const btn = document.getElementById('btn-publicar');
-            const fileInput = document.getElementById('foto_input');
-            const file = fileInput.files[0];
-            
-            if(!file) {
-                showToast("Por favor, selecione uma foto.", "error");
-                return;
-            }
+            const file = document.getElementById('foto_input').files[0];
+            if(!file) return showToast("Selecione uma foto.", "error");
 
             btn.innerText = "Consagrando...";
             btn.disabled = true;
 
             const reader = new FileReader();
-            reader.onload = async function(event) {
+            reader.onload = async (event) => {
                 try {
-                    const novoDoc = {
+                    await addDoc(collection(fbDb, "produtos"), {
                         nome: document.getElementById('nome').value,
                         categoria: document.getElementById('categoria').value,
                         preco: document.getElementById('preco').value,
@@ -323,15 +366,13 @@
                         descricao: document.getElementById('descricao').value,
                         imagem: event.target.result,
                         criadoEm: new Date()
-                    };
-
-                    await addDoc(collection(fbDb, "produtos"), novoDoc);
-                    showToast("Produto publicado na vitrine!"); // MUDANÇA AQUI
+                    });
+                    showToast("Produto publicado na vitrine!");
                     document.getElementById('form-cadastro').reset();
                     document.getElementById('image-preview').classList.add('hidden');
                     document.getElementById('preview-text').classList.remove('hidden');
                 } catch (err) {
-                    showToast("Erro ao publicar: " + err.message, "error");
+                    showToast("Erro ao publicar.", "error");
                 } finally {
                     btn.innerText = "Publicar Produto";
                     btn.disabled = false;
@@ -351,33 +392,58 @@
                     preco: document.getElementById('edit-preco').value,
                     status: document.getElementById('edit-status').value
                 });
-                showToast("Alterações salvas com sucesso!"); // MUDANÇA AQUI
+                showToast("Alterações salvas com sucesso!");
                 fecharModal();
             } catch (err) {
-                showToast("Erro ao salvar alterações.", "error");
+                showToast("Erro ao salvar.", "error");
             }
         };
 
-        // Remoção
-        window.remover = async function(id) {
-            if(confirm('Deseja realmente remover este item do axé?')) {
-                try {
-                    await deleteDoc(doc(fbDb, "produtos", id));
-                    showToast("Item removido do catálogo."); // MUDANÇA AQUI
-                } catch (err) {
-                    showToast("Erro ao excluir item.", "error");
+        // --- FUNÇÕES DE INTERFACE ---
+        window.switchTab = function(tab) {
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.querySelectorAll('.nav-link').forEach(n => {
+                n.classList.remove('active-link');
+                n.classList.add('text-stone-300');
+            });
+            document.getElementById('tab-' + tab).classList.add('active');
+            const nav = document.getElementById('nav-' + tab);
+            if(nav) { nav.classList.add('active-link'); nav.classList.remove('text-stone-300'); }
+            if(tab === 'relatorios') renderizarVendas();
+            updateStats();
+        };
+
+        window.previewImage = function(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    const img = document.getElementById('image-preview');
+                    img.src = e.target.result;
+                    img.classList.remove('hidden');
+                    document.getElementById('preview-text').classList.add('hidden');
                 }
+                reader.readAsDataURL(input.files[0]);
             }
         };
 
-        // Funções Globais
-        window.switchTab = switchTab;
-        window.previewImage = previewImage;
-        window.filtrarProdutos = filtrarProdutos;
-        window.abrirModal = abrirModal;
-        window.fecharModal = fecharModal;
-        window.limparVendas = limparVendas;
-        window.atualizarStatusVenda = atualizarStatusVenda;
+        window.abrirModal = function(id) {
+            const p = db.find(item => item.id === id);
+            if(p) {
+                document.getElementById('edit-id').value = p.id;
+                document.getElementById('edit-nome').value = p.nome;
+                document.getElementById('edit-categoria').value = p.categoria;
+                document.getElementById('edit-preco').value = p.preco;
+                document.getElementById('edit-status').value = p.status;
+                document.getElementById('modal-edicao').classList.remove('hidden');
+            }
+        };
+
+        window.fecharModal = () => document.getElementById('modal-edicao').classList.add('hidden');
+
+        window.filtrarProdutos = () => {
+            const termo = document.getElementById('busca-produto').value.toLowerCase();
+            renderizarLista(db.filter(p => p.nome.toLowerCase().includes(termo)));
+        };
 
         function updateStats() {
             document.getElementById('stat-total-itens').innerText = db.length;
@@ -386,8 +452,7 @@
                 return acc + (parseFloat(valor) || 0);
             }, 0);
             document.getElementById('stat-faturamento').innerText = `R$ ${totalFaturado.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
-            const esgotados = db.filter(p => p.status === 'esgotado').length;
-            document.getElementById('stat-esgotados').innerText = esgotados;
+            document.getElementById('stat-esgotados').innerText = db.filter(p => p.status === 'esgotado').length;
         }
 
         function renderizarLista(dados = db) {
@@ -402,111 +467,46 @@
                     <td class="p-4 font-bold text-stone-800 uppercase text-xs">${p.nome}</td>
                     <td class="p-4 text-[10px] text-stone-400 uppercase font-bold tracking-widest">${p.categoria || 'Geral'}</td>
                     <td class="p-4 text-stone-500 font-bold">R$ ${parseFloat(p.preco).toFixed(2)}</td>
-                    <td class="p-4">
-                        <span class="px-3 py-1 text-[9px] font-bold uppercase rounded status-${p.status}">
-                            ${p.status.replace('_', ' ')}
-                        </span>
-                    </td>
+                    <td class="p-4"><span class="px-3 py-1 text-[9px] font-bold uppercase rounded status-${p.status}">${p.status.replace('_', ' ')}</span></td>
                     <td class="p-4 text-center">
                         <div class="flex justify-center gap-2">
                             <button onclick="abrirModal('${p.id}')" class="bg-stone-100 px-3 py-2 text-[9px] font-bold uppercase hover:bg-[#c5a059] hover:text-white transition rounded">Editar</button>
-                            <button onclick="remover('${p.id}')" class="bg-red-50 text-red-400 px-3 py-2 text-[9px] font-bold uppercase hover:bg-red-500 hover:text-white transition rounded">Excluir</button>
+                            <button onclick="abrirConfirmacao('${p.id}')" class="bg-red-50 text-red-400 px-3 py-2 text-[9px] font-bold uppercase hover:bg-red-500 hover:text-white transition rounded">Excluir</button>
                         </div>
                     </td>
                 </tr>
             `).join('');
         }
 
-        function switchTab(tab) {
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            document.querySelectorAll('.nav-link').forEach(n => {
-                n.classList.remove('active-link');
-                n.classList.add('text-stone-300');
-            });
-            document.getElementById('tab-' + tab).classList.add('active');
-            const navElement = document.getElementById('nav-' + tab);
-            if(navElement) {
-                navElement.classList.add('active-link');
-                navElement.classList.remove('text-stone-300');
-            }
-            if(tab === 'relatorios') renderizarVendas();
-            updateStats();
-        }
-
-        function previewImage(input) {
-            const preview = document.getElementById('image-preview');
-            const text = document.getElementById('preview-text');
-            if (input.files && input.files[0]) {
-                const reader = new FileReader();
-                reader.onload = e => {
-                    preview.src = e.target.result;
-                    preview.classList.remove('hidden');
-                    text.classList.add('hidden');
-                }
-                reader.readAsDataURL(input.files[0]);
-            }
-        }
-
-        function abrirModal(id) {
-            const p = db.find(item => item.id === id);
-            if(p) {
-                document.getElementById('edit-id').value = p.id;
-                document.getElementById('edit-nome').value = p.nome;
-                document.getElementById('edit-categoria').value = p.categoria;
-                document.getElementById('edit-preco').value = p.preco;
-                document.getElementById('edit-status').value = p.status;
-                document.getElementById('modal-edicao').classList.remove('hidden');
-            }
-        }
-
-        function fecharModal() { document.getElementById('modal-edicao').classList.add('hidden'); }
-
-        function filtrarProdutos() {
-            const termo = document.getElementById('busca-produto').value.toLowerCase();
-            const filtrados = db.filter(p => p.nome.toLowerCase().includes(termo));
-            renderizarLista(filtrados);
-        }
-
         function renderizarVendas() {
-            const corpoVendas = document.getElementById('lista-vendas');
+            const corpo = document.getElementById('lista-vendas');
             if(vendas.length === 0) {
-                corpoVendas.innerHTML = `<tr><td colspan="5" class="p-10 text-center text-stone-400 italic">Nenhuma venda registrada no sistema.</td></tr>`;
+                corpo.innerHTML = `<tr><td colspan="5" class="p-10 text-center text-stone-400 italic">Nenhuma venda registrada.</td></tr>`;
                 return;
             }
-            corpoVendas.innerHTML = vendas.map((v, index) => `
-                <tr class="border-b border-stone-50 hover:bg-stone-50">
+            corpo.innerHTML = vendas.map((v, i) => `
+                <tr class="border-b border-stone-50">
                     <td class="p-6 font-bold text-stone-800">${v.cliente}</td>
                     <td class="p-6 italic text-stone-500">${v.itens}</td>
                     <td class="p-6 font-bold text-stone-800">R$ ${v.total}</td>
                     <td class="p-6"><span class="badge-pendente uppercase text-[8px]">${v.pagamento || 'WhatsApp'}</span></td>
                     <td class="p-6">
-                        <select onchange="atualizarStatusVenda(${index}, this.value)" class="border border-stone-200 p-2 rounded text-[10px] font-bold uppercase outline-none focus:border-stone-800 cursor-pointer">
+                        <select onchange="atualizarStatusVenda(${i}, this.value)" class="border border-stone-200 p-2 rounded text-[10px] font-bold uppercase outline-none focus:border-stone-800">
                             <option value="Aguardando Pagamento" ${v.status === 'Aguardando Pagamento' ? 'selected' : ''}>Aguardando Pagamento</option>
                             <option value="Preparação" ${v.status === 'Preparação' ? 'selected' : ''}>🛠️ Preparação</option>
                             <option value="Em Rota" ${v.status === 'Em Rota' ? 'selected' : ''}>🚚 Em Rota</option>
                             <option value="Entregue" ${v.status === 'Entregue' ? 'selected' : ''}>✅ Entregue</option>
-                            <option value="Cancelado" ${v.status === 'Cancelado' ? 'selected' : ''}>❌ Cancelado</option>
                         </select>
                     </td>
                 </tr>
             `).join('');
         }
 
-        function atualizarStatusVenda(index, novoStatus) {
-            vendas[index].status = novoStatus;
+        window.atualizarStatusVenda = (index, status) => {
+            vendas[index].status = status;
             localStorage.setItem('minhas_vendas', JSON.stringify(vendas));
             showToast("Status da logística atualizado!");
-        }
-
-        function limparVendas() {
-            if(confirm('Isso apagará todo o histórico de vendas. Deseja continuar?')) {
-                vendas = [];
-                localStorage.setItem('minhas_vendas', JSON.stringify(vendas));
-                renderizarVendas();
-                updateStats();
-                showToast("Histórico de vendas limpo.", "error");
-            }
-        }
+        };
     </script>
 </body>
 </html>
