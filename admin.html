@@ -28,9 +28,22 @@
         
         tr { transition: background 0.2s; }
         .search-input:focus { border-color: #c5a059; box-shadow: 0 0 0 2px rgba(197, 160, 89, 0.2); }
+
+        /* Estilo das Novas Notificações (Toast) */
+        #toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 1000; }
+        .toast { 
+            background: #2d3a2e; color: white; padding: 16px 24px; border-radius: 4px; 
+            margin-top: 10px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+            border-left: 4px solid #c5a059; font-size: 13px; font-weight: 600;
+            display: flex; align-items: center; gap: 12px;
+            transform: translateX(120%); transition: transform 0.3s ease-out;
+        }
+        .toast.show { transform: translateX(0); }
     </style>
 </head>
 <body class="flex min-h-screen">
+
+    <div id="toast-container"></div>
 
     <aside class="w-64 sidebar text-white flex flex-col fixed h-full z-40">
         <div class="p-8 border-b border-stone-700">
@@ -239,7 +252,6 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // Configuração do seu Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyBwW7An4b8M6WHFB5PNXBKXFDNZ5Nw1fIY",
             authDomain: "fiodeaxe-d6e29.firebaseapp.com",
@@ -251,27 +263,53 @@
 
         const app = initializeApp(firebaseConfig);
         const fbDb = getFirestore(app);
-        
-        let db = []; // Lista local de produtos sincronizada
+        let db = [];
         let vendas = JSON.parse(localStorage.getItem('minhas_vendas')) || [];
 
-        // 1. SINCRONIZAÇÃO EM TEMPO REAL COM FIREBASE
+        // --- FUNÇÃO DE NOTIFICAÇÃO PERSONALIZADA (TOAST) ---
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast`;
+            if(type === 'error') toast.style.borderLeftColor = '#991b1b';
+            
+            toast.innerHTML = `
+                <span>${type === 'success' ? '✨' : '⚠️'}</span>
+                <span>${message}</span>
+            `;
+            
+            container.appendChild(toast);
+            
+            // Trigger animation
+            setTimeout(() => toast.classList.add('show'), 100);
+            
+            // Remove toast
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // Sincronização
         onSnapshot(collection(fbDb, "produtos"), (snapshot) => {
             db = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             renderizarLista();
             updateStats();
         });
 
-        // 2. CADASTRO DE PRODUTO NO FIREBASE
+        // Cadastro
         document.getElementById('form-cadastro').onsubmit = async function(e) {
             e.preventDefault();
             const btn = document.getElementById('btn-publicar');
             const fileInput = document.getElementById('foto_input');
             const file = fileInput.files[0];
             
-            if(!file) return alert("Selecione uma foto.");
+            if(!file) {
+                showToast("Por favor, selecione uma foto.", "error");
+                return;
+            }
 
-            btn.innerText = "Publicando...";
+            btn.innerText = "Consagrando...";
             btn.disabled = true;
 
             const reader = new FileReader();
@@ -283,17 +321,17 @@
                         preco: document.getElementById('preco').value,
                         status: document.getElementById('status').value,
                         descricao: document.getElementById('descricao').value,
-                        imagem: event.target.result, // Base64 da imagem
+                        imagem: event.target.result,
                         criadoEm: new Date()
                     };
 
                     await addDoc(collection(fbDb, "produtos"), novoDoc);
-                    alert('✨ Produto consagrado com sucesso!');
+                    showToast("Produto publicado na vitrine!"); // MUDANÇA AQUI
                     document.getElementById('form-cadastro').reset();
                     document.getElementById('image-preview').classList.add('hidden');
                     document.getElementById('preview-text').classList.remove('hidden');
                 } catch (err) {
-                    alert("Erro ao salvar: " + err.message);
+                    showToast("Erro ao publicar: " + err.message, "error");
                 } finally {
                     btn.innerText = "Publicar Produto";
                     btn.disabled = false;
@@ -302,37 +340,37 @@
             reader.readAsDataURL(file);
         };
 
-        // 3. ATUALIZAÇÃO NO FIREBASE
+        // Edição
         document.getElementById('form-edicao').onsubmit = async function(e) {
             e.preventDefault();
             const id = document.getElementById('edit-id').value;
-            const docRef = doc(fbDb, "produtos", id);
-
             try {
-                await updateDoc(docRef, {
+                await updateDoc(doc(fbDb, "produtos", id), {
                     nome: document.getElementById('edit-nome').value,
                     categoria: document.getElementById('edit-categoria').value,
                     preco: document.getElementById('edit-preco').value,
                     status: document.getElementById('edit-status').value
                 });
+                showToast("Alterações salvas com sucesso!"); // MUDANÇA AQUI
                 fecharModal();
             } catch (err) {
-                alert("Erro ao atualizar.");
+                showToast("Erro ao salvar alterações.", "error");
             }
         };
 
-        // 4. REMOÇÃO NO FIREBASE
+        // Remoção
         window.remover = async function(id) {
             if(confirm('Deseja realmente remover este item do axé?')) {
                 try {
                     await deleteDoc(doc(fbDb, "produtos", id));
+                    showToast("Item removido do catálogo."); // MUDANÇA AQUI
                 } catch (err) {
-                    alert("Erro ao excluir.");
+                    showToast("Erro ao excluir item.", "error");
                 }
             }
         };
 
-        // Torna as funções globais para o HTML poder chamá-las
+        // Funções Globais
         window.switchTab = switchTab;
         window.previewImage = previewImage;
         window.filtrarProdutos = filtrarProdutos;
@@ -340,8 +378,6 @@
         window.fecharModal = fecharModal;
         window.limparVendas = limparVendas;
         window.atualizarStatusVenda = atualizarStatusVenda;
-
-        // --- LÓGICA DE INTERFACE (MANTIDA) ---
 
         function updateStats() {
             document.getElementById('stat-total-itens').innerText = db.length;
@@ -459,6 +495,7 @@
         function atualizarStatusVenda(index, novoStatus) {
             vendas[index].status = novoStatus;
             localStorage.setItem('minhas_vendas', JSON.stringify(vendas));
+            showToast("Status da logística atualizado!");
         }
 
         function limparVendas() {
@@ -467,6 +504,7 @@
                 localStorage.setItem('minhas_vendas', JSON.stringify(vendas));
                 renderizarVendas();
                 updateStats();
+                showToast("Histórico de vendas limpo.", "error");
             }
         }
     </script>
