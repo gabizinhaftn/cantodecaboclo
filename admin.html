@@ -74,7 +74,7 @@
                 <span>✨ Editar Catálogo</span>
             </div>
             <div onclick="switchTab('relatorios')" id="nav-relatorios" class="nav-link flex items-center gap-3 p-3 rounded text-sm text-stone-300">
-                <span>📊 Relatórios de Vendas</span>
+                <span>📊 Registro de Vendas</span>
             </div>
         </nav>
 
@@ -264,7 +264,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc, updateDoc, writeBatch, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBwW7An4b8M6WHFB5PNXBKXFDNZ5Nw1fIY",
@@ -277,8 +277,9 @@
 
         const app = initializeApp(firebaseConfig);
         const fbDb = getFirestore(app);
+        
         let db = [];
-        let vendas = JSON.parse(localStorage.getItem('minhas_vendas')) || [];
+        let listaVendasDB = []; // Variável global para armazenar vendas vindas do Firebase
         let acaoPendente = null;
 
         // --- SISTEMA DE NOTIFICAÇÃO (TOAST) ---
@@ -305,7 +306,7 @@
 
             if(idOuTipo === 'vendas') {
                 titulo.innerText = "Limpar Histórico?";
-                texto.innerText = "Isso apagará permanentemente todos os registros de vendas.";
+                texto.innerText = "Isso apagará permanentemente todos os registros de vendas do banco de dados.";
             } else {
                 titulo.innerText = "Remover do Axé?";
                 texto.innerText = "Este item será retirado do catálogo e não poderá ser recuperado.";
@@ -322,11 +323,15 @@
             if(!acaoPendente) return;
 
             if(acaoPendente === 'vendas') {
-                vendas = [];
-                localStorage.setItem('minhas_vendas', JSON.stringify(vendas));
-                renderizarVendas();
-                updateStats();
-                showToast("Histórico de vendas limpo.", "error");
+                try {
+                    const batch = writeBatch(fbDb);
+                    const snapshot = await getDocs(collection(fbDb, "vendas"));
+                    snapshot.forEach((doc) => batch.delete(doc.ref));
+                    await batch.commit();
+                    showToast("Histórico de vendas limpo no Firebase.", "error");
+                } catch (e) {
+                    showToast("Erro ao limpar histórico.", "error");
+                }
             } else {
                 try {
                     await deleteDoc(doc(fbDb, "produtos", acaoPendente));
@@ -338,10 +343,17 @@
             fecharConfirmacao();
         };
 
-        // --- FIREBASE SYNC ---
+        // --- FIREBASE SYNC (PRODUTOS) ---
         onSnapshot(collection(fbDb, "produtos"), (snapshot) => {
             db = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             renderizarLista();
+            updateStats();
+        });
+
+        // --- FIREBASE SYNC (VENDAS) ---
+        onSnapshot(collection(fbDb, "vendas"), (snapshot) => {
+            listaVendasDB = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            renderizarVendas();
             updateStats();
         });
 
@@ -409,7 +421,6 @@
             document.getElementById('tab-' + tab).classList.add('active');
             const nav = document.getElementById('nav-' + tab);
             if(nav) { nav.classList.add('active-link'); nav.classList.remove('text-stone-300'); }
-            if(tab === 'relatorios') renderizarVendas();
             updateStats();
         };
 
@@ -447,9 +458,9 @@
 
         function updateStats() {
             document.getElementById('stat-total-itens').innerText = db.length;
-            const totalFaturado = vendas.reduce((acc, v) => {
-                let valor = v.total.toString().replace('R$', '').replace('.', '').replace(',', '.').trim();
-                return acc + (parseFloat(valor) || 0);
+            const totalFaturado = listaVendasDB.reduce((acc, v) => {
+                let valorStr = v.total ? v.total.toString().replace('R$', '').replace('.', '').replace(',', '.').trim() : "0";
+                return acc + (parseFloat(valorStr) || 0);
             }, 0);
             document.getElementById('stat-faturamento').innerText = `R$ ${totalFaturado.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
             document.getElementById('stat-esgotados').innerText = db.filter(p => p.status === 'esgotado').length;
@@ -480,18 +491,24 @@
 
         function renderizarVendas() {
             const corpo = document.getElementById('lista-vendas');
-            if(vendas.length === 0) {
+            if(listaVendasDB.length === 0) {
                 corpo.innerHTML = `<tr><td colspan="5" class="p-10 text-center text-stone-400 italic">Nenhuma venda registrada.</td></tr>`;
                 return;
             }
-            corpo.innerHTML = vendas.map((v, i) => `
+            corpo.innerHTML = listaVendasDB.map((v) => `
                 <tr class="border-b border-stone-50">
-                    <td class="p-6 font-bold text-stone-800">${v.cliente}</td>
-                    <td class="p-6 italic text-stone-500">${v.itens}</td>
-                    <td class="p-6 font-bold text-stone-800">R$ ${v.total}</td>
-                    <td class="p-6"><span class="badge-pendente uppercase text-[8px]">${v.pagamento || 'WhatsApp'}</span></td>
+                    <td class="p-6 font-bold text-stone-800">${v.cliente || 'Anônimo'}</td>
+                    <td class="p-6 italic text-stone-500">${v.itens || 'Sem itens'}</td>
+                    <td class="p-6 font-bold text-stone-800">R$ ${v.total || '0,00'}</td>
                     <td class="p-6">
-                        <select onchange="atualizarStatusVenda(${i}, this.value)" class="border border-stone-200 p-2 rounded text-[10px] font-bold uppercase outline-none focus:border-stone-800">
+                        <select onchange="atualizarCampoVenda('${v.id}', 'pagamento', this.value)" class="border-none bg-stone-100 p-2 rounded text-[10px] font-bold uppercase cursor-pointer">
+                            <option value="Pendente" ${v.pagamento === 'Pendente' ? 'selected' : ''}>Pendente</option>
+                            <option value="Pago" ${v.pagamento === 'Pago' ? 'selected' : ''}>✅ Pago</option>
+                            <option value="Cancelado" ${v.pagamento === 'Cancelado' ? 'selected' : ''}>❌ Cancelado</option>
+                        </select>
+                    </td>
+                    <td class="p-6">
+                        <select onchange="atualizarCampoVenda('${v.id}', 'status', this.value)" class="border border-stone-200 p-2 rounded text-[10px] font-bold uppercase outline-none focus:border-stone-800">
                             <option value="Aguardando Pagamento" ${v.status === 'Aguardando Pagamento' ? 'selected' : ''}>Aguardando Pagamento</option>
                             <option value="Preparação" ${v.status === 'Preparação' ? 'selected' : ''}>🛠️ Preparação</option>
                             <option value="Em Rota" ${v.status === 'Em Rota' ? 'selected' : ''}>🚚 Em Rota</option>
@@ -502,11 +519,17 @@
             `).join('');
         }
 
-        window.atualizarStatusVenda = (index, status) => {
-            vendas[index].status = status;
-            localStorage.setItem('minhas_vendas', JSON.stringify(vendas));
-            showToast("Status da logística atualizado!");
+        window.atualizarCampoVenda = async (id, campo, valor) => {
+            try {
+                await updateDoc(doc(fbDb, "vendas", id), {
+                    [campo]: valor
+                });
+                showToast("Venda atualizada com sucesso!");
+            } catch (e) {
+                showToast("Erro ao atualizar banco de dados.", "error");
+            }
         };
+
     </script>
 </body>
 </html>
