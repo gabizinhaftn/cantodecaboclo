@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Administrativo | Fio de Axé</title>
+    
+    <script src="js/auth.js"></script>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Montserrat', sans-serif; background-color: #f9f8f4; color: #1a241b; }
+        h1, h2, h3, .font-cinzel { font-family: 'Cinzel', serif; }
+        .sidebar { background-color: #2d3a2e; }
+        .nav-link { cursor: pointer; transition: all 0.3s; }
+        .nav-link:hover { background-color: rgba(255,255,255,0.1); }
+        .active-link { background-color: #c5a059 !important; color: white !important; font-weight: bold; }
+        
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        .status-disponivel { background: #dcfce7; color: #166534; }
+        .status-quase_acabando { background: #fef9c3; color: #854d0e; }
+        .status-esgotado { background: #fee2e2; color: #991b1b; }
+
+        .badge-pendente { background: #fef9c3; color: #854d0e; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; }
+        #modal-edicao { background: rgba(0,0,0,0.5); backdrop-filter: blur(2px); }
+        
+        tr { transition: background 0.2s; }
+    </style>
+</head>
+<body class="flex min-h-screen">
+
+    <aside class="w-64 sidebar text-white flex flex-col fixed h-full z-40">
+        <div class="p-8 border-b border-stone-700">
+            <h1 class="text-xl font-bold tracking-tighter uppercase text-[#c5a059]">Fio de Axé</h1>
+            <p class="text-[9px] opacity-60 uppercase tracking-widest">Zeladoria de Estoque</p>
+        </div>
+        
+        <nav class="flex-1 p-4 space-y-2 mt-4">
+            <p class="text-[10px] uppercase tracking-widest text-stone-500 mb-4 px-3">Navegação</p>
+            <div onclick="switchTab('cadastro')" id="nav-cadastro" class="nav-link flex items-center gap-3 p-3 rounded text-sm active-link">
+                <span>📦 Pedidos e Vendas</span>
+            </div>
+            <div onclick="switchTab('produtos')" id="nav-produtos" class="nav-link flex items-center gap-3 p-3 rounded text-sm text-stone-300">
+                <span>✨ Editar Catálogo</span>
+            </div>
+            <div onclick="switchTab('relatorios')" id="nav-relatorios" class="nav-link flex items-center gap-3 p-3 rounded text-sm text-stone-300">
+                <span>📊 Relatórios</span>
+            </div>
+        </nav>
+
+        <div class="p-6 border-t border-stone-700">
+            <button onclick="window.location.href='index.html'" class="text-xs text-stone-400 hover:text-white uppercase tracking-tighter transition-colors cursor-pointer block w-full text-left">
+                ← Voltar para a Loja
+            </button>
+            <button onclick="logout()" class="block mt-4 text-xs text-red-400 font-bold uppercase hover:text-red-300 transition-colors w-full text-left">
+                ✕ Encerrar Sessão
+            </button>
+        </div>
+    </aside>
+
+    <main class="ml-64 flex-1 p-10">
+        
+        <section id="tab-cadastro" class="tab-content active">
+            <header class="mb-10 flex justify-between items-end">
+                <div>
+                    <h2 class="text-3xl font-bold uppercase tracking-tight font-cinzel">Painel de Controle</h2>
+                    <p class="text-stone-500 text-sm">Gerencie seu inventário e status de produtos.</p>
+                </div>
+                <div class="flex gap-4">
+                    <div class="bg-white p-4 rounded-lg border border-stone-100 shadow-sm text-center min-w-[120px]">
+                        <p class="text-[9px] uppercase text-stone-400 font-bold">Total Itens</p>
+                        <span id="stat-total-itens" class="text-xl font-bold">0</span>
+                    </div>
+                </div>
+            </header>
+
+            <div class="max-w-5xl bg-white shadow-xl border border-stone-100 overflow-hidden rounded-lg">
+                <div class="p-6">
+                    <h3 class="text-stone-800 font-bold uppercase text-sm mb-6 flex items-center gap-2">
+                        <span class="bg-stone-800 text-white w-6 h-6 flex items-center justify-center rounded-full text-xs">+</span> 
+                        Novo Produto no Axé
+                    </h3>
+                    
+                    <form id="form-cadastro" class="grid grid-cols-1 md:grid-cols-2 gap-10">
+                        <div class="space-y-6">
+                            <div>
+                                <label class="block text-[10px] uppercase font-bold text-stone-400 mb-2">Nome do Item</label>
+                                <input type="text" id="nome" placeholder="Ex: Guia de Oxóssi" class="w-full p-3 border-b border-stone-100 bg-transparent outline-none focus:border-stone-800 transition" required>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-[10px] uppercase font-bold text-stone-400 mb-2">Categoria</label>
+                                    <select id="categoria" class="w-full p-3 border-b border-stone-100 bg-transparent outline-none focus:border-stone-800 font-bold text-xs uppercase cursor-pointer">
+                                        <option value="guias">Guias de Orixá</option>
+                                        <option value="brajas">Brajás</option>
+                                        <option value="utensilios">Utensílios</option>
+                                        <option value="acessorios">Acessórios</option>
+                                        <option value="outros">Outros</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] uppercase font-bold text-stone-400 mb-2">Status</label>
+                                    <select id="status" class="w-full p-3 border-b border-stone-100 bg-transparent outline-none focus:border-stone-800 font-bold text-xs uppercase cursor-pointer">
+                                        <option value="disponivel">🟢 Disponível</option>
+                                        <option value="quase_acabando">🟡 Quase Acabando</option>
+                                        <option value="esgotado">🔴 Esgotado</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1">
+                                <div>
+                                    <label class="block text-[10px] uppercase font-bold text-stone-400 mb-2">Preço (R$)</label>
+                                    <input type="number" step="0.01" id="preco" placeholder="0,00" class="w-full p-3 border-b border-stone-100 bg-transparent outline-none focus:border-stone-800" required>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-[10px] uppercase font-bold text-stone-400 mb-2">Descrição Curta</label>
+                                <textarea id="descricao" rows="3" placeholder="Detalhes sobre miçangas, fios e materiais..." class="w-full p-3 border border-stone-100 rounded bg-stone-50 outline-none focus:border-stone-800 text-sm"></textarea>
+                            </div>
+                        </div>
+
+                        <div class="space-y-6 flex flex-col justify-between">
+                            <div>
+                                <label class="block text-[10px] uppercase font-bold text-stone-400 mb-2">Foto do Produto</label>
+                                <div class="border-2 border-dashed border-stone-200 p-4 text-center bg-stone-50 relative min-h-[150px] flex items-center justify-center rounded hover:border-stone-400 transition-colors">
+                                    <input type="file" id="foto_input" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer" required onchange="previewImage(this)">
+                                    <div id="preview-text" class="text-stone-400">
+                                        <p class="text-xs font-bold uppercase">Clique para Carregar</p>
+                                        <p class="text-[10px]">JPG ou PNG</p>
+                                    </div>
+                                    <img id="image-preview" class="hidden max-h-32 rounded shadow-md border-2 border-white">
+                                </div>
+                            </div>
+                            <button type="submit" class="w-full bg-[#2d3a2e] text-white py-4 font-bold uppercase tracking-widest hover:bg-black transition shadow-lg rounded">Publicar Produto</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <section id="tab-produtos" class="tab-content">
+            <h2 class="text-3xl font-bold uppercase tracking-tight font-cinzel mb-2">Itens no Catálogo</h2>
+            <p class="text-stone-500 text-sm mb-8">Gerencie os detalhes e visibilidade dos seus itens.</p>
+            <div class="bg-white shadow-xl border border-stone-100 overflow-hidden rounded-lg">
+                <table class="w-full text-left">
+                    <thead>
+                        <tr class="bg-stone-800 text-white text-[10px] uppercase tracking-widest">
+                            <th class="p-5">Imagem</th>
+                            <th class="p-5">Produto</th>
+                            <th class="p-5">Categoria</th>
+                            <th class="p-5">Preço</th>
+                            <th class="p-5">Status</th>
+                            <th class="p-5 text-center">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="lista-corpo"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="tab-relatorios" class="tab-content">
+            <header class="mb-10">
+                <h2 class="text-3xl font-bold uppercase tracking-tight font-cinzel">Relatório de Vendas</h2>
+                <p class="text-stone-500 text-sm">Acompanhamento de pedidos recebidos via WhatsApp/Loja.</p>
+            </header>
+
+            <div class="bg-white shadow-xl border border-stone-100 overflow-hidden rounded-lg">
+                <table class="w-full text-left text-sm">
+                    <thead>
+                        <tr class="bg-stone-50 border-b border-stone-100 text-[10px] uppercase font-bold text-stone-400 tracking-widest">
+                            <th class="p-6">Cliente</th>
+                            <th class="p-6">Itens (Qtd)</th>
+                            <th class="p-6">Valor Total</th>
+                            <th class="p-6">Pagamento</th>
+                            <th class="p-6">Status Logística</th>
+                        </tr>
+                    </thead>
+                    <tbody id="lista-vendas"></tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <div id="modal-edicao" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="bg-white max-w-md w-full p-8 rounded shadow-2xl animate-in fade-in zoom-in duration-300">
+            <h3 class="font-cinzel text-xl mb-6 uppercase border-b pb-4 text-[#c5a059]">Editar Registro</h3>
+            <form id="form-edicao" class="space-y-4">
+                <input type="hidden" id="edit-id">
+                <div>
+                    <label class="block text-[10px] uppercase font-bold text-stone-400 mb-1">Nome do Produto</label>
+                    <input type="text" id="edit-nome" class="w-full p-2 border border-stone-200 outline-none focus:border-stone-800 rounded">
+                </div>
+                <div>
+                    <label class="block text-[10px] uppercase font-bold text-stone-400 mb-1">Categoria</label>
+                    <select id="edit-categoria" class="w-full p-2 border border-stone-200 outline-none focus:border-stone-800 font-bold text-xs uppercase cursor-pointer rounded">
+                        <option value="Guias de Orixá">Guias de Orixá</option>
+                        <option value="Brajás">Brajás</option>
+                        <option value="Utensílios">Utensílios</option>
+                        <option value="Acessórios">Acessórios</option>
+                        <option value="Outros">Outros</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[10px] uppercase font-bold text-stone-400 mb-1">Preço Sugerido</label>
+                    <input type="number" step="0.01" id="edit-preco" class="w-full p-2 border border-stone-200 outline-none focus:border-stone-800 rounded">
+                </div>
+                <div>
+                    <label class="block text-[10px] uppercase font-bold text-stone-400 mb-1">Alterar Status</label>
+                    <select id="edit-status" class="w-full p-2 border border-stone-200 outline-none focus:border-stone-800 font-bold text-xs uppercase cursor-pointer rounded">
+                        <option value="disponivel">Disponível</option>
+                        <option value="quase_acabando">Quase Acabando</option>
+                        <option value="esgotado">Esgotado</option>
+                    </select>
+                </div>
+                <div class="flex gap-2 pt-4">
+                    <button type="button" onclick="fecharModal()" class="flex-1 py-3 bg-stone-100 text-[10px] font-bold uppercase rounded hover:bg-stone-200 transition">Cancelar</button>
+                    <button type="submit" class="flex-1 py-3 bg-stone-800 text-white text-[10px] font-bold uppercase hover:bg-black rounded shadow-md transition">Salvar Mudanças</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let db = JSON.parse(localStorage.getItem('meu_estoque')) || [];
+        let vendas = JSON.parse(localStorage.getItem('minhas_vendas')) || [];
+
+        function updateStats() {
+            document.getElementById('stat-total-itens').innerText = db.length;
+        }
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.querySelectorAll('.nav-link').forEach(n => {
+                n.classList.remove('active-link');
+                n.classList.add('text-stone-300');
+            });
+
+            document.getElementById('tab-' + tab).classList.add('active');
+            const navElement = document.getElementById('nav-' + tab);
+            if(navElement) {
+                navElement.classList.add('active-link');
+                navElement.classList.remove('text-stone-300');
+            }
+
+            if(tab === 'produtos') renderizarLista();
+            if(tab === 'relatorios') renderizarVendas();
+            updateStats();
+        }
+
+        function previewImage(input) {
+            const preview = document.getElementById('image-preview');
+            const text = document.getElementById('preview-text');
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    preview.src = e.target.result;
+                    preview.classList.remove('hidden');
+                    text.classList.add('hidden');
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        document.getElementById('form-cadastro').onsubmit = function(e) {
+            e.preventDefault();
+            const fileInput = document.getElementById('foto_input');
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+
+            reader.onload = function(event) {
+                const novo = {
+                    id: Date.now(),
+                    nome: document.getElementById('nome').value,
+                    categoria: document.getElementById('categoria').value,
+                    preco: document.getElementById('preco').value,
+                    status: document.getElementById('status').value,
+                    descricao: document.getElementById('descricao').value,
+                    imagem: event.target.result
+                };
+
+                db.push(novo);
+                localStorage.setItem('meu_estoque', JSON.stringify(db));
+                alert('✨ Produto consagrado no catálogo com sucesso!');
+                
+                document.getElementById('form-cadastro').reset();
+                document.getElementById('image-preview').classList.add('hidden');
+                document.getElementById('preview-text').classList.remove('hidden');
+                updateStats();
+            };
+            reader.readAsDataURL(file);
+        };
+
+        function renderizarLista() {
+            const corpo = document.getElementById('lista-corpo');
+            if(db.length === 0) {
+                corpo.innerHTML = `<tr><td colspan="6" class="p-10 text-center text-stone-400 italic">Nenhum item cadastrado ainda.</td></tr>`;
+                return;
+            }
+            corpo.innerHTML = db.map(p => `
+                <tr class="border-b border-stone-50 hover:bg-stone-50 transition">
+                    <td class="p-4"><img src="${p.imagem}" class="w-12 h-16 object-cover rounded shadow-sm border border-stone-100"></td>
+                    <td class="p-4 font-bold text-stone-800 uppercase text-xs">${p.nome}</td>
+                    <td class="p-4 text-[10px] text-stone-400 uppercase font-bold tracking-widest">${p.categoria || 'Geral'}</td>
+                    <td class="p-4 text-stone-500 font-bold">R$ ${parseFloat(p.preco).toFixed(2)}</td>
+                    <td class="p-4">
+                        <span class="px-3 py-1 text-[9px] font-bold uppercase rounded status-${p.status}">
+                            ${p.status.replace('_', ' ')}
+                        </span>
+                    </td>
+                    <td class="p-4 text-center">
+                        <div class="flex justify-center gap-2">
+                            <button onclick="abrirModal(${p.id})" class="bg-stone-100 px-3 py-2 text-[9px] font-bold uppercase hover:bg-[#c5a059] hover:text-white transition rounded">Editar</button>
+                            <button onclick="remover(${p.id})" class="bg-red-50 text-red-400 px-3 py-2 text-[9px] font-bold uppercase hover:bg-red-500 hover:text-white transition rounded">Excluir</button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function renderizarVendas() {
+            const corpoVendas = document.getElementById('lista-vendas');
+            corpoVendas.innerHTML = vendas.map((v, index) => `
+                <tr class="border-b border-stone-50 hover:bg-stone-50">
+                    <td class="p-6 font-bold text-stone-800">${v.cliente}</td>
+                    <td class="p-6 italic text-stone-500">${v.itens}</td>
+                    <td class="p-6 font-bold text-stone-800">R$ ${v.total}</td>
+                    <td class="p-6"><span class="badge-pendente uppercase text-[8px]">${v.pagamento}</span></td>
+                    <td class="p-6">
+                        <select onchange="atualizarStatusVenda(${index}, this.value)" class="border border-stone-200 p-2 rounded text-[10px] font-bold uppercase outline-none focus:border-stone-800 cursor-pointer">
+                            <option value="Aguardando Pagamento" ${v.status === 'Aguardando Pagamento' ? 'selected' : ''}>Aguardando Pagamento</option>
+                            <option value="Preparação" ${v.status === 'Preparação' ? 'selected' : ''}>🛠️ Preparação</option>
+                            <option value="Em Rota" ${v.status === 'Em Rota' ? 'selected' : ''}>🚚 Em Rota</option>
+                            <option value="Entregue" ${v.status === 'Entregue' ? 'selected' : ''}>✅ Entregue</option>
+                            <option value="Cancelado" ${v.status === 'Cancelado' ? 'selected' : ''}>❌ Cancelado</option>
+                        </select>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function atualizarStatusVenda(index, novoStatus) {
+            vendas[index].status = novoStatus;
+            localStorage.setItem('minhas_vendas', JSON.stringify(vendas));
+        }
+
+        function abrirModal(id) {
+            const p = db.find(item => item.id === id);
+            if(p) {
+                document.getElementById('edit-id').value = p.id;
+                document.getElementById('edit-nome').value = p.nome;
+                document.getElementById('edit-categoria').value = p.categoria || 'guias de orixás';
+                document.getElementById('edit-preco').value = p.preco;
+                document.getElementById('edit-status').value = p.status;
+                document.getElementById('modal-edicao').classList.remove('hidden');
+            }
+        }
+
+        function fecharModal() { document.getElementById('modal-edicao').classList.add('hidden'); }
+
+        document.getElementById('form-edicao').onsubmit = function(e) {
+            e.preventDefault();
+            const id = parseInt(document.getElementById('edit-id').value);
+            const index = db.findIndex(p => p.id === id);
+            if(index !== -1) {
+                db[index].nome = document.getElementById('edit-nome').value;
+                db[index].categoria = document.getElementById('edit-categoria').value;
+                db[index].preco = document.getElementById('edit-preco').value;
+                db[index].status = document.getElementById('edit-status').value;
+                localStorage.setItem('meu_estoque', JSON.stringify(db));
+                fecharModal();
+                renderizarLista();
+            }
+        };
+
+        function remover(id) {
+            if(confirm('Deseja realmente remover este item do axé?')) {
+                db = db.filter(p => p.id !== id);
+                localStorage.setItem('meu_estoque', JSON.stringify(db));
+                renderizarLista();
+                updateStats();
+            }
+        }
+
+        updateStats();
+    </script>
+</body>
+</html>

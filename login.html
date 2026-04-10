@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Acesso Restrito | Fio de Axé</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Montserrat:wght@400&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Montserrat', sans-serif; background: #fdfbf7; }
+        .font-cinzel { font-family: 'Cinzel', serif; }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen">
+    <div class="max-w-md w-full p-10 bg-white border border-stone-100 shadow-2xl text-center">
+        
+        <div class="mb-8">
+            <h1 class="font-cinzel text-2xl uppercase tracking-widest mb-2">Portal do Zelador</h1>
+            <p class="text-[10px] text-stone-400 uppercase tracking-widest">Área Restrita / Login Administrativo</p>
+        </div>
+
+        <form id="login-form" class="space-y-6">
+            <input type="email" id="email" placeholder="E-mail de Acesso" 
+                class="w-full p-4 border border-stone-100 bg-stone-50 outline-none focus:border-stone-800 transition-all text-xs tracking-widest" 
+                style="text-transform: lowercase;" required autocomplete="off">
+            
+            <input type="password" id="pass" placeholder="Senha" 
+                class="w-full p-4 border border-stone-100 bg-stone-50 outline-none focus:border-stone-800 transition-all uppercase text-xs tracking-widest" required>
+            
+            <button type="submit" 
+                class="w-full bg-stone-800 text-white py-4 font-bold uppercase tracking-[0.2em] hover:bg-black transition shadow-lg text-xs">
+                Entrar no Painel
+            </button>
+        </form>
+
+        <a href="index.html" class="block mt-10 text-[10px] uppercase text-stone-400 tracking-widest hover:text-stone-800 transition-colors italic">
+            ← Voltar para a loja
+        </a>
+    </div>
+
+    <script src="js/auth.js"></script>
+    <script>
+        document.getElementById('login-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Forçamos a conversão para minúsculo e removemos espaços vazios
+            const emailValue = document.getElementById('email').value.toLowerCase().trim();
+            const passValue = document.getElementById('pass').value;
+
+            // Verificação de segurança: chama a função do auth.js se ela existir
+            if (typeof window.login === 'function') {
+                window.login(emailValue, passValue);
+            } else if (typeof login === 'function') {
+                login(emailValue, passValue);
+            } else {
+                alert("Erro crítico: Sistema de autenticação não carregado. Verifique se o arquivo auth.js está na mesma pasta.");
+            }
+        });
+    </script>
+</body>
+</html>

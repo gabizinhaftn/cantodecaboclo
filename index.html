@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fio de Axé | Religiosidade & Arte</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="auth.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Montserrat:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            font-family: 'Montserrat', sans-serif; 
+            background-color: #f2f2f2; 
+            color: #1a1a1a;
+            position: relative;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image: url('https://www.transparenttextures.com/patterns/stardust.png');
+            opacity: 0.8;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .font-cinzel { font-family: 'Cinzel', serif; }
+        
+        .product-card { 
+            background: white; 
+            border-radius: 20px; 
+            padding: 15px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.03);
+            position: relative;
+            z-index: 10;
+        }
+        .product-card:hover { 
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.06);
+        }
+
+        .btn-pill {
+            border-radius: 9999px;
+            padding: 10px 24px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s;
+        }
+        .btn-dark { background: #1a1a1a; color: white; }
+        .btn-outline { border: 1px solid #e5e7eb; color: #9ca3af; background: white; }
+
+        #cart-sidebar { 
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1); 
+            transform: translateX(100%); 
+            z-index: 10000; 
+        }
+        #cart-sidebar.open { transform: translateX(0); }
+        #cart-overlay { z-index: 9998; }
+        
+        nav { position: sticky; top: 0; z-index: 1000 !important; }
+        header { position: relative; z-index: 10; }
+        main, .fixed { position: relative; z-index: 100; }
+        
+        .hidden-section { display: none; }
+
+        .whatsapp-float {
+            position: fixed;
+            width: 60px;
+            height: 60px;
+            bottom: 40px;
+            right: 40px;
+            background-color: #25d366;
+            color: #FFF;
+            border-radius: 50px;
+            text-align: center;
+            font-size: 30px;
+            box-shadow: 2px 2px 15px rgba(0,0,0,0.2);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+        .whatsapp-float:hover {
+            transform: scale(1.1);
+            background-color: #128c7e;
+        }
+
+        /* Estilo para os ícones do rodapé */
+        .social-icon {
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: #1a1a1a;
+            color: white;
+        }
+        .social-icon:hover { transform: translateY(-3px); opacity: 0.8; }
+    </style>
+</head>
+<body>
+
+    <div id="site-content">
+        <nav class="grid grid-cols-2 md:grid-cols-3 items-center px-6 md:px-10 py-6 bg-white shadow-md sticky top-0">
+            <div class="flex items-center gap-4 cursor-pointer justify-self-start" onclick="showSection('home')">
+                <img src="https://i.ibb.co/5XcMjrWQ/Fio-de-Ax-2.png" class="w-12 h-12 md:w-14 md:h-14 rounded-full object-cover shadow-sm" alt="Logo"> 
+                <div>
+                    <h1 class="font-cinzel text-xl md:text-2xl tracking-widest leading-none">FIO DE AXÉ</h1>
+                    <p class="text-[10px] md:text-[11px] uppercase tracking-[3px] text-stone-400">Religiosidade & Arte</p>
+                </div>
+            </div>
+            
+            <div class="hidden md:flex justify-center gap-8 text-[14px] uppercase font-bold tracking-widest text-stone-600">
+                <button onclick="showSection('home')" class="hover:text-stone-900 transition" id="nav-home">Coleções</button>
+                <button onclick="showSection('pedidos')" class="hover:text-stone-900 transition" id="nav-pedidos">Meus Pedidos</button>
+                <a href="login.html" class="text-orange-600 hover:text-orange-700 transition">Admin</a>
+            </div>
+
+            <div class="flex items-center gap-6 justify-self-end">
+                <button onclick="toggleCart()" class="p-2 relative">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.115 12a2.25 2.25 0 0 1-2.25 2.25H4.144a2.25 2.25 0 0 1-2.25-2.25l1.115-12a2.25 2.25 0 0 1 2.25-2.25h15.54a2.25 2.25 0 0 1 2.25 2.25Z" />
+                    </svg>
+                    <span id="cart-count" class="absolute top-0 right-0 bg-orange-600 text-white text-[9px] w-4 h-4 flex items-center justify-center rounded-full">0</span>
+                </button>
+            </div>
+        </nav>
+
+        <div id="section-home">
+            <header class="text-center py-16 md:py-24 px-6">
+                <h2 class="font-cinzel text-4xl md:text-5xl text-stone-900 mb-8 tracking-tighter leading-tight uppercase">
+                    Arte que vibra,<br>Fundamento que guia.
+                </h2>
+                <div class="flex justify-center gap-4">
+                    <button id="btn-filter-all" onclick="filtrarProdutos('todos')" class="btn-pill btn-dark shadow-lg shadow-black/20">Todas as Peças</button>
+                    <button id="btn-filter-guias" onclick="filtrarProdutos('Guias de Orixá')" class="btn-pill btn-outline">Guias de Orixá</button>
+                </div>
+            </header>
+
+            <main class="max-w-7xl mx-auto px-6 md:px-10 pb-20">
+                <div id="vitrine" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8"></div>
+            </main>
+        </div>
+
+        <div id="section-pedidos" class="hidden-section max-w-7xl mx-auto px-6 md:px-10 py-20">
+            <h2 class="font-cinzel text-5xl text-stone-800 mb-2 uppercase">Meus Pedidos</h2>
+            <p class="text-stone-500 mb-10 text-lg">Acompanhe aqui o histórico de suas peças encomendadas.</p>
+            
+            <div class="bg-white rounded-xl shadow-sm overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead class="bg-stone-50 border-b border-stone-100 text-[12px] uppercase tracking-widest text-stone-400">
+                        <tr>
+                            <th class="px-6 py-4">Itens da Encomenda</th>
+                            <th class="px-6 py-4">Valor Total</th>
+                            <th class="px-6 py-4">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="lista-pedidos" class="text-sm">
+                        <tr><td colspan="3" class="px-6 py-12 text-center text-stone-400 italic">Você ainda não possui pedidos processados.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <footer class="bg-white border-t border-stone-200 pt-16 pb-8 mt-20 relative z-50">
+            <div class="max-w-7xl mx-auto px-6 md:px-10 text-center">
+                <div class="mb-8">
+                    <h3 class="font-cinzel text-2xl mb-2">Fio de Axé</h3>
+                    <p class="text-stone-500 text-sm font-semibold tracking-[2px] uppercase">Trabalhamos 100% via internet</p>
+                </div>
+
+                <div class="flex justify-center gap-6 mb-10">
+                    <a href="#" class="social-icon hover:bg-gradient-to-tr hover:from-yellow-400 hover:to-purple-600" target="_blank">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M8 0C5.829 0 5.556.01 4.703.048 3.85.088 3.269.222 2.76.42a3.917 3.917 0 0 0-1.417.923A3.927 3.927 0 0 0 .42 2.76c-.198.509-.333 1.09-.372 1.942C.01 5.555 0 5.827 0 8s.01 2.445.048 3.299c.04.851.175 1.433.372 1.941a3.926 3.926 0 0 0 .923 1.417 3.911 3.911 0 0 0 1.417.923c.51.198 1.09.333 1.942.372C5.555 15.99 5.827 16 8 16s2.445-.01 3.299-.048c.851-.04 1.433-.175 1.941-.372a3.911 3.911 0 0 0 1.417-.923 3.928 3.928 0 0 0 .923-1.417c.197-.509.332-1.09.372-1.942C15.99 10.445 16 10.173 16 8s-.01-2.445-.048-3.299c-.04-.851-.175-1.433-.372-1.941a3.926 3.926 0 0 0-.923-1.417A3.911 3.911 0 0 0 13.24.42c-.51-.198-1.09-.333-1.942-.372C10.445.01 10.173 0 8 0zm0 1.441c2.131 0 2.384.009 3.227.048.786.036 1.212.167 1.497.278.378.147.648.322.932.606.284.284.459.554.606.932.11.285.241.711.278 1.497.039.843.048 1.096.048 3.227s-.009 2.384-.048 3.227c-.036.786-.167 1.212-.278 1.498a2.707 2.707 0 0 1-.606.932 2.708 2.708 0 0 1-.932.606c-.285.11-.711.241-1.498.278-.843.039-1.096.048-3.227.048s-2.384-.009-3.227-.048c-.786-.036-1.212-.167-1.497-.278a2.308 2.308 0 0 1-.932-.606 2.308 2.308 0 0 1-.606-.932c-.11-.285-.241-.711-.278-1.497-.039-.843-.048-1.096-.048-3.227s.009-2.384.048-3.227c.036-.786.167-1.212.278-1.497.147-.378.322-.648.606-.932.284-.284.554-.459.932-.606.285-.11.711-.241 1.497-.278.843-.039 1.096-.048 3.227-.048z"/>
+                        </svg>
+                    </a>
+                    <a href="#" class="social-icon hover:bg-black" target="_blank">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M9 0h1.98c.144.715.54 1.617 1.235 2.512C12.895 3.389 13.797 4 15 4v2c-1.753 0-3.07-.814-4-1.829V11a5 5 0 1 1-5-5v2a3 3 0 1 0 3 3z"/>
+                        </svg>
+                    </a>
+                    <a href="https://wa.me/5511984348036" class="social-icon hover:bg-green-500" target="_blank">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M13.601 2.326A7.854 7.854 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.933 7.933 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.898 7.898 0 0 0 13.6 2.326zM7.994 14.521a6.573 6.573 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.557 6.557 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592zm3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.308-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.729.729 0 0 0-.529.247c-.182.198-.691.677-.691 1.654 0 .977.71 1.916.81 2.049.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232z"/>
+                        </svg>
+                    </a>
+                </div>
+
+                <p class="text-[10px] text-stone-400 uppercase tracking-widest border-t border-stone-100 pt-8">
+                    &copy; 2026 Fio de Axé. Todos os direitos reservados.
+                </p>
+            </div>
+        </footer>
+    </div>
+
+    <a href="https://wa.me/5511984348036?text=Olá,%20gostaria%20de%20tirar%20uma%20dúvida" class="whatsapp-float" target="_blank">
+        <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor" viewBox="0 0 16 16">
+            <path d="M13.601 2.326A7.854 7.854 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.933 7.933 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.898 7.898 0 0 0 13.6 2.326zM7.994 14.521a6.573 6.573 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.557 6.557 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592zm3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.308-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.729.729 0 0 0-.529.247c-.182.198-.691.677-.691 1.654 0 .977.71 1.916.81 2.049.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232z"/>
+        </svg>
+    </a>
+
+    <div id="cart-overlay" class="fixed inset-0 bg-black/20 backdrop-blur-sm hidden" onclick="toggleCart()"></div>
+    <aside id="cart-sidebar" class="fixed right-0 top-0 h-full w-full max-w-sm bg-white shadow-2xl p-8 flex flex-col">
+        <div class="flex justify-between items-center mb-10">
+            <h3 class="font-cinzel text-2xl">Sacola</h3>
+            <button onclick="toggleCart()" class="text-2xl">&times;</button>
+        </div>
+        <div id="cart-items" class="flex-1 overflow-y-auto space-y-6"></div>
+        <div class="border-t pt-6 mt-6">
+            <div class="flex justify-between font-bold mb-4 text-lg">
+                <span>Total</span>
+                <span id="cart-total">R$ 0,00</span>
+            </div>
+            <button onclick="finalizarWhatsApp()" class="w-full btn-pill btn-dark py-4">Finalizar no WhatsApp</button>
+        </div>
+    </aside>
+
+    <script>
+        // --- BANCO DE DADOS E ESTOQUE ---
+        let db = JSON.parse(localStorage.getItem('meu_estoque')) || [
+            {id: 1, nome: "Guia de Oxóssi", preco: 40.00, imagem: "https://i.ibb.co/6R6qBfP/oxossi.jpg", categoria: "Guias de Orixá"},
+        ];
+        let carrinho = [];
+
+        // --- FUNÇÕES DE NAVEGAÇÃO ---
+        function showSection(section) {
+            document.getElementById('section-home').classList.toggle('hidden-section', section !== 'home');
+            document.getElementById('section-pedidos').classList.toggle('hidden-section', section !== 'pedidos');
+            
+            window.scrollTo({top: 0, behavior: 'smooth'});
+        }
+
+        function renderizarVitrine(lista = db) {
+            const vitrine = document.getElementById('vitrine');
+            if (!vitrine) return;
+            
+            if(lista.length === 0) {
+                vitrine.innerHTML = `<p class="col-span-full text-center py-20 text-stone-400 uppercase text-[12px] tracking-widest">Nenhuma peça nesta coleção ainda.</p>`;
+                return;
+            }
+
+            vitrine.innerHTML = lista.map(p => `
+                <div class="product-card group">
+                    <div class="relative aspect-square overflow-hidden rounded-[15px] mb-6 bg-stone-100">
+                        <img src="${p.imagem}" class="w-full h-full object-cover transition duration-500 group-hover:scale-110" onerror="this.src='https://via.placeholder.com/400x400?text=Imagem+Indisponivel'">
+                    </div>
+                    <div class="text-center px-2">
+                        <p class="text-[11px] uppercase tracking-widest text-orange-600 font-bold mb-1">${p.categoria || 'Arte Axé'}</p>
+                        <h4 class="font-cinzel text-2xl text-stone-800 mb-2">${p.nome}</h4>
+                        <p class="text-stone-800 text-lg font-semibold mb-4 italic">R$ ${parseFloat(p.preco).toFixed(2)}</p>
+                        <button onclick="addCart(${p.id})" class="w-full btn-pill btn-outline text-[13px] hover:border-black hover:text-black transition-colors">
+                            Adicionar à Sacola
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function filtrarProdutos(cat) {
+            const filtrados = cat === 'todos' ? db : db.filter(p => p.categoria === cat);
+            renderizarVitrine(filtrados);
+            
+            document.getElementById('btn-filter-all').className = cat === 'todos' ? "btn-pill btn-dark shadow-lg shadow-black/20" : "btn-pill btn-outline";
+            document.getElementById('btn-filter-guias').className = cat === 'Guias de Orixá' ? "btn-pill btn-dark shadow-lg shadow-black/20" : "btn-pill btn-outline";
+        }
+
+        // --- LÓGICA DO CARRINHO ---
+        function toggleCart() {
+            document.getElementById('cart-sidebar').classList.toggle('open');
+            document.getElementById('cart-overlay').classList.toggle('hidden');
+        }
+
+        function addCart(id) {
+            const prod = db.find(p => p.id === id);
+            if(prod) {
+                carrinho.push({...prod, cartId: Date.now()});
+                updateCartUI();
+                if(!document.getElementById('cart-sidebar').classList.contains('open')) toggleCart();
+            }
+        }
+
+        function updateCartUI() {
+            const container = document.getElementById('cart-items');
+            document.getElementById('cart-count').innerText = carrinho.length;
+            let total = 0;
+            
+            if(carrinho.length === 0) {
+                container.innerHTML = `<p class="text-center text-stone-400 text-[12px] mt-10 uppercase tracking-widest">Sua sacola está vazia</p>`;
+            } else {
+                container.innerHTML = carrinho.map((p, i) => {
+                    total += parseFloat(p.preco);
+                    return `
+                    <div class="flex gap-4 items-center border-b border-stone-50 pb-4">
+                        <img src="${p.imagem}" class="w-16 h-16 object-cover rounded-lg">
+                        <div class="flex-1">
+                            <h5 class="text-[12px] font-bold uppercase tracking-tighter">${p.nome}</h5>
+                            <p class="text-stone-400 text-sm">R$ ${parseFloat(p.preco).toFixed(2)}</p>
+                        </div>
+                        <button onclick="removeItem(${i})" class="text-stone-300 hover:text-red-500 transition-colors text-xl">&times;</button>
+                    </div>`;
+                }).join('');
+            }
+            document.getElementById('cart-total').innerText = `R$ ${total.toFixed(2)}`;
+        }
+
+        function removeItem(i) {
+            carrinho.splice(i, 1);
+            updateCartUI();
+        }
+
+        function finalizarWhatsApp() {
+            if(carrinho.length === 0) return alert("Sua sacola está vazia!");
+            
+            const numero = "5511984348036"; 
+            let total = 0;
+            let mensagem = `Olá! Gostaria de encomendar os seguintes itens:\n\n`;
+            
+            carrinho.forEach(p => {
+                mensagem += `• ${p.nome} - R$ ${parseFloat(p.preco).toFixed(2)}\n`;
+                total += parseFloat(p.preco);
+            });
+            
+            mensagem += `\n*Total: R$ ${total.toFixed(2)}*`;
+            window.open(`https://api.whatsapp.com/send?phone=${numero}&text=${encodeURIComponent(mensagem)}`, '_blank');
+        }
+
+        window.onload = () => {
+            renderizarVitrine();
+            if(typeof verificarAcesso === "function") verificarAcesso();
+        };
+    </script>
+</body>
+</html>
