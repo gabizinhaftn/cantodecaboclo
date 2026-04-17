@@ -709,73 +709,85 @@
                 openAuthModal();
                 return showToast("Faça login para concluir", "error");
             }
-                    
-            const numero = "5511984348036"; 
-            let totalVenda = 0;
-            let resumoItens = "";
-            let nomesString = carrinho.map(p => `${p.nome} (${p.quantidade}x)`).join(', ');
-            
-            carrinho.forEach(p => {
-                const sub = parseFloat(p.preco || 0) * parseInt(p.quantidade || 1);
-                resumoItens += `• ${p.nome} (${p.quantidade}x) - R$ ${sub.toFixed(2)}\n`;
-                totalVenda += sub;
-            });
-
-            const mensagem = `*PEDIDO FIO DE AXÉ*\n\n*Cliente:* ${window.userLogado.displayName || window.userLogado.email}\n\n*Itens:*\n${resumoItens}\n*Total: R$ ${totalVenda.toFixed(2)}*`;
 
             try {
-                if (window.db_online && window.addDoc) {
-                    const dadosPedido = {
-                        // IMPORTANTE: Este campo deve ser exatamente igual ao que você usa no filtro de busca
-                        userId: window.userLogado.uid, 
-                        cliente: window.userLogado.displayName || window.userLogado.email,
-                        itens: nomesString,
-                        total: totalVenda.toFixed(2),
-                        valorTotal: totalVenda.toFixed(2),
-                        data: new Date().toLocaleDateString('pt-BR'),
-                        status: "Aguardando Pagamento",
-                        pagamento: "PENDENTE",
-                        logistica: "AGUARDANDO PAGAMENTO",
-                        timestamp: new Date() // Essencial para ordenar a lista
-                    };
-
-                    // AGUARDAR o salvamento antes de qualquer outra ação
-                    await window.addDoc(window.collection(window.db_online, "vendas"), dadosPedido);
-                    await window.addDoc(window.collection(window.db_online, "pedidos"), dadosPedido);
-                    
-                    console.log("Pedido salvo com sucesso!");
+                let proximoID = 1;
+                
+                // 1. Calcular o ID Sequencial (#1, #2...)
+                if (window.db_online && window.getDocs) {
+                    const querySnapshot = await window.getDocs(window.collection(window.db_online, "pedidos"));
+                    proximoID = querySnapshot.size + 1;
                 }
-            } catch (e) { 
-                console.error("Erro ao salvar:", e); 
-            }
 
-            // SÓ DEPOIS DE SALVAR, FAZ O REDIRECIONAMENTO
-            const urlWpp = `https://wa.me/${numero}?text=${encodeURIComponent(mensagem)}`;
-            // ... resto do código de redirecionamento
-            
-            const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-            
-            if (isMobile) {
-                window.location.href = urlWpp;
-            } else {
-                const win = window.open(urlWpp, '_blank');
-                if(!win) window.location.href = urlWpp;
-            }
+                const numeroWpp = "5511984348036";
+                let totalVenda = 0;
+                let resumoItensWpp = "";
+                let nomesItensAdmin = carrinho.map(p => `${p.quantidade}x ${p.nome}`).join(', ');
 
-            carrinho = [];
-            // Após zerar o array, atualizamos o armazenamento e a interface
-            if(typeof salvarEAtualizar === "function") {
-                salvarEAtualizar();
-            } else {
-                localStorage.setItem('cart_fio_de_axe', JSON.stringify(carrinho));
-                if(typeof updateCartUI === "function") updateCartUI();
-            }
-            
-            toggleCart();
-            showToast("Pedido registrado! Redirecionando...");
-        }
+                carrinho.forEach(p => {
+                    const sub = parseFloat(p.preco || 0) * parseInt(p.quantidade || 1);
+                    resumoItensWpp += `${p.quantidade}x ${p.nome} - R$ ${sub.toFixed(2)}\n`;
+                    totalVenda += sub;
+                });
 
-        // Criando um alias caso o HTML chame finalizarCompra
+                const idFormatado = `#${proximoID}`;
+                const nomeCliente = window.userLogado.displayName || window.userLogado.email;
+
+                // 2. Criar Objeto para o Admin (Registro de Vendas)
+                const dadosPedido = {
+                    idPedido: idFormatado,
+                    userId: window.userLogado.uid,
+                    cliente: nomeCliente,
+                    itens: nomesItensAdmin,
+                    quantidadeTotal: carrinho.reduce((acc, p) => acc + parseInt(p.quantidade), 0),
+                    valorTotal: totalVenda.toFixed(2),
+                    pagamento: "PENDENTE", // Valor para a caixinha do Admin
+                    logistica: "AGUARDANDO PAGAMENTO", // Status para o Admin
+                    data: new Date().toLocaleDateString('pt-BR'),
+                    timestamp: new Date()
+                };
+
+                // 3. Salvar no Banco (Coleção 'pedidos' que o seu Admin já lê)
+                if (window.db_online && window.addDoc) {
+                    await window.addDoc(window.collection(window.db_online, "pedidos"), dadosPedido);
+                }
+
+                // 4. Montar Mensagem do WhatsApp
+                const mensagemWpp = `*PEDIDO FIO DE AXÉ*\n\n` +
+                    `*ID do Pedido:* ${idFormatado}\n` +
+                    `*Cliente:* ${nomeCliente}\n\n` +
+                    `*Itens:*\n${resumoItensWpp}\n` +
+                    `*Total a Pagar: R$ ${totalVenda.toFixed(2)}*\n\n` +
+                    `*ENVIAR O COMPROVANTE DE PAGAMENTO AQUI PARA PROSSEGUIR COM A COMPRA*`;
+
+                const urlWpp = `https://wa.me/${numeroWpp}?text=${encodeURIComponent(mensagemWpp)}`;
+
+                // 5. Redirecionamento e Limpeza
+                carrinho = [];
+                if(typeof salvarEAtualizar === "function") {
+                    salvarEAtualizar();
+                } else {
+                    localStorage.setItem('cart_fio_de_axe', JSON.stringify(carrinho));
+                    updateCartUI();
+                }
+
+                showToast("Pedido Gerado! Abrindo WhatsApp...");
+                
+                setTimeout(() => {
+                    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+                    if (isMobile) {
+                        window.location.href = urlWpp;
+                    } else {
+                        window.open(urlWpp, '_blank');
+                    }
+                }, 1000);
+
+            } catch (e) {
+                console.error("Erro ao finalizar:", e);
+                showToast("Erro ao salvar pedido", "error");
+            }
+        };
+
         window.finalizarCompra = window.finalizarWhatsApp;
 
         window.onload = () => { 
