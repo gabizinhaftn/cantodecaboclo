@@ -477,6 +477,7 @@
                 return;
             }
 
+            // 1. Sincronização da Vitrine (Mantida)
             const q = window.query(window.collection(window.db_online, "produtos"));
             window.onSnapshot(q, (querySnapshot) => {
                 db = [];
@@ -489,63 +490,55 @@
                     });
                 });
                 renderizarVitrine(db);
-                updateCartUI(); 
+                if(typeof updateCartUI === "function") updateCartUI(); 
             });
 
-            // Dentro da função initFirebaseSync, na parte do window.userLogado:
+            // 2. Sincronização dos Pedidos do Cliente
             if (window.userLogado) {
                 const alertaPedidos = document.getElementById('alerta-login-pedidos');
                 if(alertaPedidos) alertaPedidos.classList.add('hidden');
                 
-                // Lista de coleções para monitorar
-                const colecoes = ["vendas", "pedidos"];
+                const listaPedidos = document.getElementById('lista-pedidos');
+                if(!listaPedidos) return;
+
+                // BUSCA GLOBAL: Vamos buscar na coleção "vendas" (onde você confirmou que o dado cai)
+                // Usamos tanto 'userId' quanto 'uid' para garantir que o filtro pegue
+                const qVendas = window.query(
+                    window.collection(window.db_online, "vendas"),
+                    window.where("userId", "==", window.userLogado.uid)
+                );
                 
-                colecoes.forEach(colecaoNome => {
-                    // Criamos a query buscando pelo ID do usuário
-                    const qVendas = window.query(
-                        window.collection(window.db_online, colecaoNome),
-                        window.where("userId", "==", window.userLogado.uid)
-                    );
+                window.onSnapshot(qVendas, (querySnapshot) => {
+                    let htmlPedidos = "";
                     
-                    window.onSnapshot(qVendas, (querySnapshot) => {
-                        const listaPedidos = document.getElementById('lista-pedidos');
-                        if(!listaPedidos) return;
-                        
-                        // Se for a primeira coleção ou estiver vazio, limpamos o "Nenhum pedido encontrado"
-                        if (listaPedidos.innerHTML.includes("Nenhum pedido")) {
-                            listaPedidos.innerHTML = "";
-                        }
+                    if (querySnapshot.empty) {
+                        listaPedidos.innerHTML = `<tr><td colspan="4" class="px-6 py-12 text-center text-stone-400 italic text-[11px]">Nenhum pedido encontrado.</td></tr>`;
+                        return;
+                    }
 
-                        querySnapshot.docChanges().forEach((change) => {
-                            if (change.type === "added" || change.type === "modified") {
-                                const v = change.doc.data();
-                                const pedidoId = change.doc.id;
-                                
-                                // Verifica se esse pedido já está na tabela para não duplicar
-                                if (!document.getElementById(`pedido-${pedidoId}`)) {
-                                    const statusExibicao = v.logistica || v.status || 'Pendente';
-                                    const novaLinha = `
-                                        <tr id="pedido-${pedidoId}" class="border-b border-stone-50 hover:bg-stone-50 transition">
-                                            <td class="px-6 py-4 font-semibold text-[11px]">${v.itens}</td>
-                                            <td class="px-6 py-4 text-[11px]">R$ ${parseFloat(v.total || v.valorTotal || 0).toFixed(2)}</td>
-                                            <td class="px-6 py-4 text-stone-400 text-[11px]">${v.data}</td>
-                                            <td class="px-6 py-4">
-                                                <span class="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-[10px] font-bold uppercase tracking-wider">${statusExibicao}</span>
-                                            </td>
-                                        </tr>`;
-                                    listaPedidos.insertAdjacentHTML('afterbegin', novaLinha);
-                                }
-                            }
-                        });
+                    querySnapshot.forEach((doc) => {
+                        const v = doc.data();
+                        // Pegamos qualquer campo de status disponível no seu banco
+                        const statusExibicao = v.logistica || v.status || v.pagamento || 'Pendente';
+                        const valorExibicao = v.total || v.valorTotal || 0;
 
-                        if (listaPedidos.innerHTML === "") {
-                            listaPedidos.innerHTML = `<tr><td colspan="4" class="px-6 py-12 text-center text-stone-400 italic text-[11px]">Nenhum pedido encontrado.</td></tr>`;
-                        }
+                        htmlPedidos += `
+                            <tr class="border-b border-stone-50 hover:bg-stone-50 transition">
+                                <td class="px-6 py-4 font-semibold text-[11px]">${v.itens || 'Produtos'}</td>
+                                <td class="px-6 py-4 text-[11px]">R$ ${parseFloat(valorExibicao).toFixed(2)}</td>
+                                <td class="px-6 py-4 text-stone-400 text-[11px]">${v.data || '---'}</td>
+                                <td class="px-6 py-4">
+                                    <span class="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-[10px] font-bold uppercase tracking-wider">${statusExibicao}</span>
+                                </td>
+                            </tr>`;
                     });
+                    
+                    listaPedidos.innerHTML = htmlPedidos;
+                }, (error) => {
+                    console.error("Erro no Snapshot de pedidos:", error);
                 });
-            
             } else {
-                renderizarPedidosVazio();
+                if(typeof renderizarPedidosVazio === "function") renderizarPedidosVazio();
             }
         }
 
