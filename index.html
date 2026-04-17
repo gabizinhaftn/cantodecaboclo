@@ -497,55 +497,60 @@
             if (window.userLogado) {
                 const alertaPedidos = document.getElementById('alerta-login-pedidos');
                 if(alertaPedidos) alertaPedidos.classList.add('hidden');
-                
+
                 const listaPedidos = document.getElementById('lista-pedidos');
                 if(!listaPedidos) return;
 
-                // Atualizado: Mudança de 'vendas' para 'pedidos' conforme o seu Firestore
-                // Reativado: Filtro where para garantir que o cliente veja apenas o que é dele
+                // Conforme sua imagem, os dados estão em 'pedidos'
+                // O campo de vínculo é 'userId'.
                 const qVendas = window.query(
                     window.collection(window.db_online, "pedidos"),
                     window.where("userId", "==", window.userLogado.uid)
                 );
-                
+
                 window.onSnapshot(qVendas, (querySnapshot) => {
+                    // Limpamos a lista antes de renderizar para evitar duplicados
+                    listaPedidos.innerHTML = "";
+
                     if (querySnapshot.empty) {
-                        listaPedidos.innerHTML = `<tr><td colspan="4" class="px-6 py-12 text-center text-stone-400 italic text-[11px]">Nenhum pedido encontrado.</td></tr>`;
+                        listaPedidos.innerHTML = `<tr><td colspan="4" class="px-6 py-12 text-center text-stone-400 italic text-[11px]">Nenhum pedido encontrado para sua conta.</td></tr>`;
                         return;
                     }
 
                     let htmlPedidos = "";
                     const pedidosArr = [];
+                    
                     querySnapshot.forEach((doc) => {
                         pedidosArr.push({ id: doc.id, ...doc.data() });
                     });
 
-                    // Ordena para que o mais recente apareça primeiro usando o timestamp
+                    // Ordenação por timestamp para o mais novo aparecer no topo
                     pedidosArr.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
 
                     pedidosArr.forEach((v) => {
-                        // Priorizando campos 'logistica' e 'valorTotal' que vimos no seu banco
+                        // Usamos os campos exatos que aparecem no seu console: 'logistica' e 'valorTotal'
                         const statusEx = v.logistica || v.status || v.pagamento || 'Pendente';
                         const valorEx = v.valorTotal || v.total || 0;
+                        const dataEx = v.data || "---";
 
                         htmlPedidos += `
                             <tr class="border-b border-stone-50 hover:bg-stone-50 transition">
                                 <td class="px-6 py-4 font-semibold text-[11px]">${v.itens || 'Produtos'}</td>
                                 <td class="px-6 py-4 text-[11px]">R$ ${parseFloat(valorEx).toFixed(2)}</td>
-                                <td class="px-6 py-4 text-stone-400 text-[11px]">${v.data || '---'}</td>
+                                <td class="px-6 py-4 text-stone-400 text-[11px]">${dataEx}</td>
                                 <td class="px-6 py-4">
                                     <span class="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-[10px] font-bold uppercase tracking-wider">${statusEx}</span>
                                 </td>
                             </tr>`;
                     });
                     listaPedidos.innerHTML = htmlPedidos;
-                }, (error) => console.error("Erro pedidos cliente:", error));
+                }, (error) => {
+                    console.error("Erro ao carregar pedidos:", error);
+                    listaPedidos.innerHTML = `<tr><td colspan="4" class="px-6 py-4 text-center text-red-400 text-[10px]">Erro de permissão no Firebase.</td></tr>`;
+                });
 
             } else {
-                // Se não houver usuário logado
-                if(typeof renderizarPedidosVazio === "function") {
-                    renderizarPedidosVazio();
-                }
+                if(typeof renderizarPedidosVazio === "function") renderizarPedidosVazio();
             }
         }
 
