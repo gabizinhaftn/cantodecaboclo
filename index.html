@@ -507,26 +507,38 @@
                     window.collection(window.db_online, "vendas"),
                     window.where("userId", "==", window.userLogado.uid)
                 );
-                
+
                 window.onSnapshot(qVendas, (querySnapshot) => {
                     let htmlPedidos = "";
+                    const listaPedidos = document.getElementById('lista-pedidos'); // Garantindo a referência do elemento
                     
+                    if (!listaPedidos) return;
+
                     if (querySnapshot.empty) {
                         listaPedidos.innerHTML = `<tr><td colspan="4" class="px-6 py-12 text-center text-stone-400 italic text-[11px]">Nenhum pedido encontrado.</td></tr>`;
                         return;
                     }
 
-                    querySnapshot.forEach((doc) => {
-                        const v = doc.data();
-                        // Pegamos qualquer campo de status disponível no seu banco
+                    // Convertemos para array para ordenar pelos mais recentes primeiro (usando o timestamp do banco)
+                    const docsOrdenados = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+                        .sort((a, b) => {
+                            const timeA = a.timestamp?.seconds || 0;
+                            const timeB = b.timestamp?.seconds || 0;
+                            return timeB - timeA;
+                        });
+
+                    docsOrdenados.forEach((v) => {
+                        // Mapeia exatamente os campos que aparecem no seu Registro de Vendas
                         const statusExibicao = v.logistica || v.status || v.pagamento || 'Pendente';
                         const valorExibicao = v.total || v.valorTotal || 0;
+                        const itensExibicao = v.itens || 'Produtos';
+                        const dataExibicao = v.data || '---';
 
                         htmlPedidos += `
                             <tr class="border-b border-stone-50 hover:bg-stone-50 transition">
-                                <td class="px-6 py-4 font-semibold text-[11px]">${v.itens || 'Produtos'}</td>
+                                <td class="px-6 py-4 font-semibold text-[11px]">${itensExibicao}</td>
                                 <td class="px-6 py-4 text-[11px]">R$ ${parseFloat(valorExibicao).toFixed(2)}</td>
-                                <td class="px-6 py-4 text-stone-400 text-[11px]">${v.data || '---'}</td>
+                                <td class="px-6 py-4 text-stone-400 text-[11px]">${dataExibicao}</td>
                                 <td class="px-6 py-4">
                                     <span class="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-[10px] font-bold uppercase tracking-wider">${statusExibicao}</span>
                                 </td>
@@ -537,9 +549,9 @@
                 }, (error) => {
                     console.error("Erro no Snapshot de pedidos:", error);
                 });
-            } else {
-                if(typeof renderizarPedidosVazio === "function") renderizarPedidosVazio();
-            }
+                } else {
+                    if(typeof renderizarPedidosVazio === "function") renderizarPedidosVazio();
+                }
         }
 
         function renderizarPedidosVazio() {
