@@ -53,12 +53,13 @@
         
         // Insere o texto na div que você criou no HTML
         if (saudacaoDiv) {
+            // Usamos 'block' e 'py-4' para garantir que o elemento ocupe seu próprio espaço vertical
             saudacaoDiv.innerHTML = `
-                <div class="animate-fade-in">
-                    <h2 class="font-cinzel text-xl text-stone-800 tracking-[3px]">
+                <div class="block py-4 animate-fade-in">
+                    <h2 class="font-cinzel text-xl md:text-2xl text-stone-800 tracking-[4px]">
                         AXÉ, ${nomeUsuario.toUpperCase()}!
                     </h2>
-                    <p class="text-[10px] text-stone-500 uppercase tracking-[2px] mt-1">
+                    <p class="text-[11px] text-stone-500 uppercase tracking-[3px] mt-2">
                         Confira as peças selecionadas para você
                     </p>
                 </div>
@@ -256,11 +257,15 @@
         </nav>
 
         <div id="section-home">
-            <header class="text-center py-16 md:py-24 px-6">
-                <div id="saudacao-usuario" class="text-center mt-8 -mb-4"></div>
+            <header class="text-center py-16 md:py-24 px-6 flex flex-col items-center">
+                
+                <div id="saudacao-usuario" class="text-center mt-4 mb-10 min-h-[50px] w-full"></div>
+
                 <h2 class="font-cinzel text-4xl md:text-5xl text-stone-900 mb-8 tracking-tighter leading-tight uppercase">
                     Arte que vibra,<br>Fundamento que guia.
                 </h2>
+                </header>
+
                 <div class="flex justify-center gap-4">
                     <button id="btn-filter-all" onclick="filtrarProdutos('todos')" class="btn-pill btn-dark shadow-lg shadow-black/20">Todas as Peças</button>
                     <button id="btn-filter-guias" onclick="filtrarProdutos('GUIAS')" class="btn-pill btn-outline">Guias de Orixá</button>
