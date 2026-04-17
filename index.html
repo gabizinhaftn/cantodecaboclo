@@ -504,7 +504,7 @@
                 // Buscamos na coleção 'vendas', que é onde o Admin enxerga
                 const qVendas = window.query(
                     window.collection(window.db_online, "vendas"),
-                    window.where("userId", "==", window.userLogado.uid)
+                    //window.where("userId", "==", window.userLogado.uid)
                 );
                 
                 window.onSnapshot(qVendas, (querySnapshot) => {
@@ -722,8 +722,8 @@
             try {
                 if (window.db_online && window.addDoc) {
                     const dadosPedido = {
-                        userId: window.userLogado.uid,
-                        uid: window.userLogado.uid,
+                        // IMPORTANTE: Este campo deve ser exatamente igual ao que você usa no filtro de busca
+                        userId: window.userLogado.uid, 
                         cliente: window.userLogado.displayName || window.userLogado.email,
                         itens: nomesString,
                         total: totalVenda.toFixed(2),
@@ -732,7 +732,7 @@
                         status: "Aguardando Pagamento",
                         pagamento: "PENDENTE",
                         logistica: "AGUARDANDO PAGAMENTO",
-                        timestamp: new Date()
+                        timestamp: new Date() // Essencial para ordenar a lista
                     };
 
                     // AGUARDAR o salvamento antes de qualquer outra ação
