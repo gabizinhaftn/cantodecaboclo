@@ -501,10 +501,11 @@
                 const listaPedidos = document.getElementById('lista-pedidos');
                 if(!listaPedidos) return;
 
-                // Buscamos na coleção 'vendas', que é onde o Admin enxerga
+                // Atualizado: Mudança de 'vendas' para 'pedidos' conforme o seu Firestore
+                // Reativado: Filtro where para garantir que o cliente veja apenas o que é dele
                 const qVendas = window.query(
-                    window.collection(window.db_online, "vendas"),
-                    //window.where("userId", "==", window.userLogado.uid)
+                    window.collection(window.db_online, "pedidos"),
+                    window.where("userId", "==", window.userLogado.uid)
                 );
                 
                 window.onSnapshot(qVendas, (querySnapshot) => {
@@ -519,12 +520,13 @@
                         pedidosArr.push({ id: doc.id, ...doc.data() });
                     });
 
-                    // Ordena para que o mais recente apareça primeiro
+                    // Ordena para que o mais recente apareça primeiro usando o timestamp
                     pedidosArr.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
 
                     pedidosArr.forEach((v) => {
+                        // Priorizando campos 'logistica' e 'valorTotal' que vimos no seu banco
                         const statusEx = v.logistica || v.status || v.pagamento || 'Pendente';
-                        const valorEx = v.total || v.valorTotal || 0;
+                        const valorEx = v.valorTotal || v.total || 0;
 
                         htmlPedidos += `
                             <tr class="border-b border-stone-50 hover:bg-stone-50 transition">
