@@ -203,21 +203,23 @@
                     <h2 class="text-3xl font-bold uppercase tracking-tight font-cinzel">Registro de Vendas</h2>
                     <p class="text-stone-500 text-sm">Histórico de pedidos via WhatsApp.</p>
                 </div>
-                <button onclick="abrirConfirmacao('vendas')" class="text-[10px] bg-red-50 text-red-500 border border-red-100 px-4 py-2 rounded font-bold uppercase hover:bg-red-500 hover:text-white transition">Limpar Histórico</button>
+                <button onclick="abrirConfirmacao('pedidos')" class="text-[10px] bg-red-50 text-red-500 border border-red-100 px-4 py-2 rounded font-bold uppercase hover:bg-red-500 hover:text-white transition">Limpar Histórico</button>
             </header>
 
-            <div class="bg-white shadow-xl border border-stone-100 overflow-hidden rounded-lg overflow-x-auto">
-                <table class="w-full text-left text-sm">
-                    <thead>
-                        <tr class="bg-stone-50 border-b border-stone-100 text-[10px] uppercase font-bold text-stone-400 tracking-widest">
-                            <th class="p-6">Cliente</th>
-                            <th class="p-6">Itens (Qtd)</th>
-                            <th class="p-6">Valor Total</th>
-                            <th class="p-6">Pagamento</th>
-                            <th class="p-6">Status Logística</th>
+            <div class="bg-white rounded-lg shadow-sm border border-stone-100 overflow-hidden">
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-stone-50 border-b border-stone-100">
+                        <tr>
+                            <th class="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-stone-500">ID</th>
+                            <th class="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-stone-500">Cliente</th>
+                            <th class="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-stone-500">Itens (Qtd)</th>
+                            <th class="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-stone-500">Valor Total</th>
+                            <th class="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-stone-500">Pagamento</th>
+                            <th class="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-stone-500">Status Logística</th>
                         </tr>
                     </thead>
-                    <tbody id="lista-vendas"></tbody>
+                    <tbody id="tabela-registro-vendas">
+                        </tbody>
                 </table>
             </div>
         </section>
@@ -264,7 +266,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc, updateDoc, writeBatch, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc, updateDoc, writeBatch, getDocs, orderBy, query } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBwW7An4b8M6WHFB5PNXBKXFDNZ5Nw1fIY",
@@ -283,7 +285,7 @@
         let acaoPendente = null;
 
         // --- SISTEMA DE NOTIFICAÇÃO (TOAST) ---
-        function showToast(message, type = 'success') {
+        window.showToast = function(message, type = 'success') {
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
             toast.className = `toast`;
@@ -304,7 +306,7 @@
             const titulo = document.getElementById('confirma-titulo');
             const texto = document.getElementById('confirma-texto');
 
-            if(idOuTipo === 'vendas') {
+            if(idOuTipo === 'pedidos' || idOuTipo === 'vendas') {
                 titulo.innerText = "Limpar Histórico?";
                 texto.innerText = "Isso apagará permanentemente todos os registros de vendas do banco de dados.";
             } else {
@@ -322,13 +324,13 @@
         document.getElementById('btn-confirmar-acao').onclick = async function() {
             if(!acaoPendente) return;
 
-            if(acaoPendente === 'vendas') {
+            if(acaoPendente === 'pedidos' || acaoPendente === 'vendas') {
                 try {
                     const batch = writeBatch(fbDb);
-                    const snapshot = await getDocs(collection(fbDb, "vendas"));
+                    const snapshot = await getDocs(collection(fbDb, "pedidos"));
                     snapshot.forEach((doc) => batch.delete(doc.ref));
                     await batch.commit();
-                    showToast("Histórico de vendas limpo no Firebase.", "error");
+                    showToast("Histórico de vendas limpo.", "error");
                 } catch (e) {
                     showToast("Erro ao limpar histórico.", "error");
                 }
@@ -350,10 +352,11 @@
             updateStats();
         });
 
-        // --- FIREBASE SYNC (VENDAS) ---
-        onSnapshot(collection(fbDb, "vendas"), (snapshot) => {
+        // --- FIREBASE SYNC (PEDIDOS/VENDAS) ---
+        const qVendas = query(collection(fbDb, "pedidos"), orderBy("timestamp", "desc"));
+        onSnapshot(qVendas, (snapshot) => {
             listaVendasDB = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            renderizarVendas();
+            renderizarRegistroVendas();
             updateStats();
         });
 
@@ -393,7 +396,7 @@
             reader.readAsDataURL(file);
         };
 
-        // Edição
+        // Edição de Produto
         document.getElementById('form-edicao').onsubmit = async function(e) {
             e.preventDefault();
             const id = document.getElementById('edit-id').value;
@@ -456,27 +459,14 @@
             renderizarLista(db.filter(p => p.nome.toLowerCase().includes(termo)));
         };
 
-        // --- ATUALIZAÇÃO DA CONTA DE FATURAMENTO (ATUALIZADO PARA EVITAR ERRO DE MILHAR) ---
+        // --- ATUALIZAÇÃO DOS CARDS SUPERIORES ---
         function updateStats() {
             document.getElementById('stat-total-itens').innerText = db.length;
             
             const totalFaturado = listaVendasDB.reduce((acc, v) => {
-                if(v.pagamento && v.pagamento.toLowerCase() === 'pago') {
-                    let valorStr = v.total ? v.total.toString() : "0";
-                    
-                    // Remove "R$", espaços e trata pontuação brasileira
-                    let valorLimpo = valorStr.replace('R$', '').replace(/\s/g, '');
-                    
-                    // Se o valor tem vírgula e ponto (ex: 1.200,00), remove o ponto e troca a vírgula
-                    if (valorLimpo.includes(',') && valorLimpo.includes('.')) {
-                        valorLimpo = valorLimpo.replace(/\./g, '').replace(',', '.');
-                    } else {
-                        // Se tem só vírgula (ex: 40,00), troca por ponto
-                        valorLimpo = valorLimpo.replace(',', '.');
-                    }
-                    
-                    const valorNum = parseFloat(valorLimpo) || 0;
-                    return acc + valorNum;
+                // Só conta no faturamento se o pagamento estiver como PAGO
+                if(v.pagamento === 'PAGO') {
+                    return acc + parseFloat(v.valorTotal || 0);
                 }
                 return acc;
             }, 0);
@@ -485,6 +475,7 @@
             document.getElementById('stat-esgotados').innerText = db.filter(p => p.status === 'esgotado').length;
         }
 
+        // Renderiza lista de produtos para edição
         function renderizarLista(dados = db) {
             const corpo = document.getElementById('lista-corpo');
             if(dados.length === 0) {
@@ -496,7 +487,7 @@
                     <td class="p-4"><img src="${p.imagem}" class="w-12 h-16 object-cover rounded shadow-sm border border-stone-100"></td>
                     <td class="p-4 font-bold text-stone-800 uppercase text-xs">${p.nome}</td>
                     <td class="p-4 text-[10px] text-stone-400 uppercase font-bold tracking-widest">${p.categoria || 'Geral'}</td>
-                    <td class="p-4 text-stone-500 font-bold">R$ ${parseFloat(p.preco).toFixed(2)}</td>
+                    <td class="p-4 text-stone-500 font-bold">R$ ${parseFloat(p.preco || 0).toFixed(2)}</td>
                     <td class="p-4"><span class="px-3 py-1 text-[9px] font-bold uppercase rounded status-${p.status}">${p.status.replace('_', ' ')}</span></td>
                     <td class="p-4 text-center">
                         <div class="flex justify-center gap-2">
@@ -508,44 +499,54 @@
             `).join('');
         }
 
-        function renderizarVendas() {
-            const corpo = document.getElementById('lista-vendas');
-            if(listaVendasDB.length === 0) {
-                corpo.innerHTML = `<tr><td colspan="5" class="p-10 text-center text-stone-400 italic">Nenhuma venda registrada.</td></tr>`;
+        // --- RENDERIZAÇÃO DO REGISTRO DE VENDAS (AQUILO QUE VOCÊ QUERIA) ---
+        function renderizarRegistroVendas() {
+            const tabela = document.getElementById('tabela-registro-vendas');
+            if (!tabela) return;
+
+            if (listaVendasDB.length === 0) {
+                tabela.innerHTML = `<tr><td colspan="6" class="p-10 text-center text-stone-400 italic">Nenhuma venda registrada.</td></tr>`;
                 return;
             }
-            corpo.innerHTML = listaVendasDB.map((v) => `
-                <tr class="border-b border-stone-50">
-                    <td class="p-6 font-bold text-stone-800">${v.cliente || 'Anônimo'}</td>
-                    <td class="p-6 italic text-stone-500">${v.itens || 'Sem itens'}</td>
-                    <td class="p-6 font-bold text-stone-800">R$ ${v.total || '0,00'}</td>
-                    <td class="p-6">
-                        <select onchange="atualizarCampoVenda('${v.id}', 'pagamento', this.value)" class="border-none bg-stone-100 p-2 rounded text-[10px] font-bold uppercase cursor-pointer">
-                            <option value="Pendente" ${v.pagamento === 'Pendente' ? 'selected' : ''}>Pendente</option>
-                            <option value="Pago" ${v.pagamento === 'Pago' ? 'selected' : ''}>✅ Pago</option>
-                            <option value="Cancelado" ${v.pagamento === 'Cancelado' ? 'selected' : ''}>❌ Cancelado</option>
+
+            tabela.innerHTML = listaVendasDB.map(v => `
+                <tr class="border-b border-stone-50 hover:bg-stone-50 transition">
+                    <td class="px-6 py-4 font-bold text-orange-600 text-[11px]">${v.idPedido || '#--'}</td>
+                    <td class="px-6 py-4 font-semibold text-[12px] text-stone-800">${v.cliente || 'Anônimo'}</td>
+                    <td class="px-6 py-4 text-[11px] text-stone-500 italic">${v.itens || 'Produtos'}</td>
+                    <td class="px-6 py-4 font-bold text-[12px]">R$ ${parseFloat(v.valorTotal || 0).toFixed(2)}</td>
+                    
+                    <td class="px-6 py-4">
+                        <select onchange="atualizarStatusPedido('${v.id}', 'pagamento', this.value)" 
+                            class="text-[10px] font-bold p-1 rounded border border-stone-200 bg-white cursor-pointer">
+                            <option value="PENDENTE" ${v.pagamento === 'PENDENTE' ? 'selected' : ''}>PENDENTE</option>
+                            <option value="PAGO" ${v.pagamento === 'PAGO' ? 'selected' : ''}>✅ PAGO</option>
+                            <option value="CANCELADO" ${v.pagamento === 'CANCELADO' ? 'selected' : ''}>❌ CANCELADO</option>
                         </select>
                     </td>
-                    <td class="p-6">
-                        <select onchange="atualizarCampoVenda('${v.id}', 'status', this.value)" class="border border-stone-200 p-2 rounded text-[10px] font-bold uppercase outline-none focus:border-stone-800">
-                            <option value="Aguardando Pagamento" ${v.status === 'Aguardando Pagamento' ? 'selected' : ''}>Aguardando Pagamento</option>
-                            <option value="Preparação" ${v.status === 'Preparação' ? 'selected' : ''}>🛠️ Preparação</option>
-                            <option value="Em Rota" ${v.status === 'Em Rota' ? 'selected' : ''}>🚚 Em Rota</option>
-                            <option value="Entregue" ${v.status === 'Entregue' ? 'selected' : ''}>✅ Entregue</option>
+
+                    <td class="px-6 py-4">
+                        <select onchange="atualizarStatusPedido('${v.id}', 'logistica', this.value)" 
+                            class="text-[10px] font-bold p-1 rounded border border-stone-200 bg-white uppercase cursor-pointer">
+                            <option value="AGUARDANDO PAGAMENTO" ${v.logistica === 'AGUARDANDO PAGAMENTO' ? 'selected' : ''}>AGUARDANDO PAGAMENTO</option>
+                            <option value="EM PREPARAÇÃO" ${v.logistica === 'EM PREPARAÇÃO' ? 'selected' : ''}>🛠️ EM PREPARAÇÃO</option>
+                            <option value="EM ROTA" ${v.logistica === 'EM ROTA' ? 'selected' : ''}>🚚 EM ROTA</option>
+                            <option value="ENTREGUE" ${v.logistica === 'ENTREGUE' ? 'selected' : ''}>✅ ENTREGUE</option>
                         </select>
                     </td>
                 </tr>
             `).join('');
         }
 
-        window.atualizarCampoVenda = async (id, campo, valor) => {
+        // Função para atualizar os selects direto no banco
+        window.atualizarStatusPedido = async (docId, campo, novoValor) => {
             try {
-                await updateDoc(doc(fbDb, "vendas", id), {
-                    [campo]: valor
-                });
-                showToast("Venda atualizada com sucesso!");
+                const docRef = doc(fbDb, "pedidos", docId);
+                await updateDoc(docRef, { [campo]: novoValor });
+                showToast("Status atualizado!");
             } catch (e) {
-                showToast("Erro ao atualizar banco de dados.", "error");
+                console.error("Erro ao atualizar status:", e);
+                showToast("Erro ao salvar.", "error");
             }
         };
 
