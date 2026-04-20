@@ -48,7 +48,7 @@
         const btnLogin = document.getElementById('btn-login-nav');
         
         if (user) {
-            // Pega o nome do Google ou a primeira parte do e-mail
+    // Pega o nome do Google ou a primeira parte do e-mail
             const nomeUsuario = user.displayName || user.email.split('@')[0];
             
             // Insere o texto na div que você criou no HTML
@@ -60,27 +60,32 @@
                         </h2>
                         <p class="text-[9px] md:text-[11px] text-stone-500 uppercase tracking-[2px] mt-2">
                             Confira as peças selecionadas para você
-                        </h2>
+                        </p> 
                     </div>
                 `;
             }
 
-        if(btnLogin) {
-            btnLogin.innerHTML = `Sair (${nomeUsuario})`;
-            btnLogin.onclick = () => auth.signOut().then(() => window.location.reload());
-        }
-        initFirebaseSync(); 
-    } else {
-        // Se deslogar, esconde a saudação
-        if (saudacaoDiv) saudacaoDiv.innerHTML = "";
+            if(btnLogin) {
+                btnLogin.innerHTML = `Sair (${nomeUsuario})`;
+                btnLogin.onclick = () => auth.signOut().then(() => window.location.reload());
+            }
+            
+            // Garante a sincronização dos dados do usuário logado
+            initFirebaseSync(user.uid); 
+        } else {
+            // Se deslogar, esconde a saudação
+            if (saudacaoDiv) saudacaoDiv.innerHTML = "";
 
-        if(btnLogin) {
-            btnLogin.innerHTML = `Entrar / Cadastro`;
-            btnLogin.onclick = () => openAuthModal();
+            if(btnLogin) {
+                btnLogin.innerHTML = `Entrar / Cadastro`;
+                btnLogin.onclick = () => openAuthModal();
+            }
+            
+            renderizarPedidosVazio();
+            
+            // Mantém a vitrine pública ativa mesmo deslogado
+            initFirebaseSync();
         }
-        renderizarPedidosVazio();
-        initFirebaseSync();
-    }
 });
     </script>
 
@@ -600,6 +605,8 @@
                 </div>`).join('');
         }
 
+        
+
         // Nova função para gerenciar a exibição dos detalhes
         // Função que é chamada quando clica no card
         function abrirDetalhesProduto(id) {
@@ -844,6 +851,36 @@
                 }
             }, 500); 
         };
+
+        // --- FUNÇÃO DE LOGIN DO CLIENTE ---
+        async function fazerLogin(email, senha) {
+            try {
+                // Verifica se os campos não estão vazios antes de tentar o Firebase
+                if (!email || !senha) {
+                    alert("Por favor, preencha todos os campos.");
+                    return;
+                }
+
+                // signInWithEmailAndPassword deve estar importado do firebase/auth
+                const userCredential = await signInWithEmailAndPassword(auth, email, senha);
+                const user = userCredential.user;
+                
+                console.log("Login realizado com sucesso:", user.uid);
+                alert("Bem-vindo de volta!");
+                
+                // Redireciona para a página principal
+                window.location.href = "index.html"; 
+            } catch (error) {
+                console.error("Erro no login:", error.code);
+                
+                // Tratamento de erros específicos
+                if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+                    alert("E-mail ou senha incorretos.");
+                } else {
+                    alert("Erro ao entrar: " + error.message);
+                }
+            }
+        }
     </script>
     <div id="modal-detalhes" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
     <div class="bg-white w-full max-w-2xl rounded-[20px] overflow-hidden shadow-2xl relative flex flex-col md:flex-row">
