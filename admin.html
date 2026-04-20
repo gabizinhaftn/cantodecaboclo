@@ -249,8 +249,13 @@
                     <input type="number" step="0.01" id="edit-preco" class="w-full p-2 border border-stone-200 outline-none focus:border-stone-800 rounded">
                 </div>
                 <div class="mb-4">
-                    <label class="block text-sm font-bold mb-2">DESCRIÇÃO DO PRODUTO</label>
-                    <textarea id="editDescricao" class="w-full border rounded p-2" rows="4"></textarea>
+                    <label class="block text-[11px] font-bold uppercase tracking-widest text-stone-500 mb-2">DESCRIÇÃO DO PRODUTO</label>
+                    <textarea 
+                        id="editDescricao" 
+                        class="w-full border border-stone-200 rounded-[10px] p-3 text-stone-800 text-sm focus:outline-none focus:border-orange-600 transition-all resize-none" 
+                        rows="4"
+                        placeholder="Descreva os detalhes e o fundamento da peça..."
+                    ></textarea>
                 </div>
                 <div>
                     <label class="block text-[10px] uppercase font-bold text-stone-400 mb-1">Alterar Status</label>
@@ -426,17 +431,21 @@
         document.getElementById('form-edicao').onsubmit = async function(e) {
             e.preventDefault();
             const id = document.getElementById('edit-id').value;
+
             try {
                 await updateDoc(doc(fbDb, "produtos", id), {
                     nome: document.getElementById('edit-nome').value,
                     categoria: document.getElementById('edit-categoria').value,
                     preco: document.getElementById('edit-preco').value,
                     status: document.getElementById('edit-status').value,
-                    descricao: document.getElementById('editDescricao').value = produto.descricao || ''
+                    // CORREÇÃO: Pegamos apenas o .value do campo sem o sinal de "="
+                    descricao: document.getElementById('editDescricao').value 
                 });
+
                 showToast("Alterações salvas com sucesso!");
                 fecharModal();
             } catch (err) {
+                console.error("Erro detalhado:", err); // Ajuda a identificar o erro no console
                 showToast("Erro ao salvar.", "error");
             }
         };
